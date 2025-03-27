@@ -100,7 +100,7 @@ func main() {
 		// поиск команды
 		for _, cmd := range config.Commands {
 			if update.Message.Command() == cmd.Name {
-				scriptPath := fmt.Sprintf("../scripts/%s", cmd.Handler)
+				scriptPath := fmt.Sprintf("scripts/%s", cmd.Handler)
 				if err := le.ExecuteScript(scriptPath, FromTgUpdateToLuaContext(update)); err != nil {
 					logrus.Errorf("Error executing script: %v", err)
 				}
