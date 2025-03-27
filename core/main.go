@@ -8,40 +8,8 @@ import (
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	yaml "github.com/goccy/go-yaml"
 	"github.com/sirupsen/logrus"
 )
-
-type BotConfig struct {
-	Token string `yaml:"token"`
-	Mode  string `yaml:"mode"`
-}
-
-type Command struct {
-	Name        string `yaml:"name"`
-	Description string `yaml:"description"`
-	Handler     string `yaml:"handler"`
-}
-
-type Config struct {
-	Bot      BotConfig `yaml:"bot"`
-	Commands []Command `yaml:"commands"`
-}
-
-// Config loader
-func LoadConfig(path string) (*Config, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	var config Config
-	if err := yaml.Unmarshal(data, &config); err != nil {
-		return nil, err
-	}
-
-	return &config, nil
-}
 
 func main() {
 	logrus.SetFormatter(&logrus.JSONFormatter{})
@@ -81,6 +49,16 @@ func main() {
 	logrus.Info("start processing")
 	// обработка обновлений
 	for update := range updates {
+		//обработка кнопок
+		if update.CallbackQuery != nil {
+			lCtx := FromCallbackQueryToLuaContext(update.CallbackQuery)
+			logrus.Infof("cbdata handler is %s", lCtx.CbData.Handler)
+			scriptPath := fmt.Sprintf("scripts/%s", lCtx.CbData.Handler)
+			if err := le.ExecuteScript(scriptPath, lCtx); err != nil {
+				logrus.Errorf("Error executing script: %v", err)
+			}
+			continue
+		}
 		//отбрасываем с пустым сообщением(надо будет убрать для обработки кнопок)
 		if update.Message == nil {
 			continue
@@ -100,11 +78,60 @@ func main() {
 		// поиск команды
 		for _, cmd := range config.Commands {
 			if update.Message.Command() == cmd.Name {
-				scriptPath := fmt.Sprintf("scripts/%s", cmd.Handler)
-				if err := le.ExecuteScript(scriptPath, FromTgUpdateToLuaContext(update)); err != nil {
-					logrus.Errorf("Error executing script: %v", err)
+				handleCommand(config, le, &update, &cmd)
+				break
+			}
+		}
+	}
+}
+
+func handleCommand(config *Config, le *LuaEngine, upd *tgbotapi.Update, cmd *Command) {
+	//запуск скрипта
+	if cmd.Handler != nil && *cmd.Handler != "" {
+		scriptPath := fmt.Sprintf("scripts/%s", *cmd.Handler)
+		if err := le.ExecuteScript(scriptPath, FromTgUpdateToLuaContext(upd)); err != nil {
+			logrus.Errorf("Error executing script: %v", err)
+		}
+	}
+
+	//обработка блока Reply
+	if cmd.Reply != nil {
+		if cmd.Reply.Msg != nil && *cmd.Reply.Msg != "" {
+			le.bot.SendMessage(upd.Message.Chat.ID, *cmd.Reply.Msg)
+		}
+
+		if cmd.Reply.Keyboard != nil && *cmd.Reply.Keyboard != "" {
+			rMessage := ""
+			keyboard := make([][]tgbotapi.InlineKeyboardButton, 0)
+			//поиск keyboard в конфиге
+			for _, kb := range config.Keyboards {
+				if *cmd.Reply.Keyboard == kb.Name {
+					logrus.Infof("keyboard is %+v", kb)
+					// текст сообщения с клавиатурой
+					rMessage = kb.Message
+					//проходимся по блоку Buttons по каждому Row
+					for _, r := range kb.Buttons {
+						row := make([]tgbotapi.InlineKeyboardButton, 0)
+						//проходимся по кнопкам внутри Row
+						for _, b := range r.Row {
+							//заполняем CallBackData
+							data := ""
+							if b.Handler != nil {
+								data = *b.Handler
+							}
+							btn := tgbotapi.NewInlineKeyboardButtonData(b.Text, data)
+							row = append(row, btn)
+						}
+						keyboard = append(keyboard, row)
+					}
+					break
 				}
 			}
+
+			replyMessage := tgbotapi.NewMessage(upd.Message.Chat.ID, rMessage)
+			replyMessage.ReplyMarkup = tgbotapi.InlineKeyboardMarkup{InlineKeyboard: keyboard}
+
+			le.bot.Send(replyMessage)
 		}
 	}
 }

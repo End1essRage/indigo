@@ -3,16 +3,10 @@ package main
 import (
 	"fmt"
 
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/sirupsen/logrus"
 	lua "github.com/yuin/gopher-lua"
 )
-
-type LuaContext struct {
-	MessageText string
-	ChatId      int64
-	FromId      int64
-	FromName    string
-}
 
 // Lua engine wrapper
 type LuaEngine struct {
@@ -21,7 +15,8 @@ type LuaEngine struct {
 
 // интерфейс описывает какие ручки торчат в lua
 type Bot interface {
-	SendMessage(chatId int64, msg string) error
+	SendMessage(chatId int64, text string) error
+	Send(msg tgbotapi.MessageConfig) error
 }
 
 func NewLuaEngine(b Bot) *LuaEngine {

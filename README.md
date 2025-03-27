@@ -18,6 +18,31 @@ commands:
   - name: "start"
     description: "Приветствие"
     handler: "welcome.lua"
+  - name: "menu"
+    description: "тест меню"
+    reply:
+      keyboard: "main_menu"
+
+keyboards:
+  - name: "main_menu"
+    type: "inline" # или "reply"
+    message: "main"
+    buttons:
+      - row:
+          - name: "btn1"
+            text: "Кнопка 1"
+            handler: "btn1_handler.lua"
+          - name: "btn2"
+            text: "Кнопка 2"
+            callback_data: "customData"
+            handler: "btn1_handler.lua"
+      - row:
+          - name: "btn3"
+            text: "Кнопка 1"
+            handler: "btn1_handler.lua"
+          - name: "btn4"
+            text: "Кнопка 2"
+            handler: "btn1_handler.lua"
 
 2. Пример скрипта (welcome.lua)
 
