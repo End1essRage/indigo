@@ -41,10 +41,16 @@ type Keyboard struct {
 	Buttons []KeyboardRow `yaml:"buttons"`
 }
 
-type Config struct {
+type YamlConfig struct {
 	Bot       BotConfig  `yaml:"bot"`
 	Commands  []Command  `yaml:"commands"`
 	Keyboards []Keyboard `yaml:"keyboards,omitempty"`
+}
+
+type Config struct {
+	Bot       BotConfig
+	Commands  map[string]*Command
+	Keyboards map[string]*Keyboard
 }
 
 // Config loader
@@ -54,9 +60,23 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, err
 	}
 
-	var config Config
-	if err := yaml.Unmarshal(data, &config); err != nil {
+	var yConfig YamlConfig
+	if err := yaml.Unmarshal(data, &yConfig); err != nil {
 		return nil, err
+	}
+
+	var config Config
+	config.Bot = yConfig.Bot
+	//fill commands
+	config.Commands = make(map[string]*Command)
+	for _, c := range yConfig.Commands {
+		config.Commands[c.Name] = &c
+	}
+
+	//fill keyboards
+	config.Keyboards = make(map[string]*Keyboard)
+	for _, k := range yConfig.Keyboards {
+		config.Keyboards[k.Name] = &k
 	}
 
 	return &config, nil

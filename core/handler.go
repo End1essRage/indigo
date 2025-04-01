@@ -22,7 +22,9 @@ func (h *Handler) HandleUpdate(update *tgbotapi.Update) {
 	//обработка кнопок
 	if update.CallbackQuery != nil {
 		lCtx := FromCallbackQueryToLuaContext(update.CallbackQuery)
+
 		logrus.Infof("cbdata handler is %s", lCtx.CbData.Handler)
+
 		scriptPath := fmt.Sprintf("scripts/%s", lCtx.CbData.Handler)
 		if err := h.le.ExecuteScript(scriptPath, lCtx); err != nil {
 			logrus.Errorf("Error executing script: %v", err)
@@ -45,15 +47,18 @@ func (h *Handler) HandleUpdate(update *tgbotapi.Update) {
 	//обрабатываем help
 	if update.Message.Command() == "help" {
 		h.bot.SendMessage(update.Message.Chat.ID, formatHelpMessage(h.config.Commands))
+		return
 	}
 
-	// поиск команды
-	for _, cmd := range h.config.Commands {
-		if update.Message.Command() == cmd.Name {
-			h.handleCommand(update, &cmd)
-			break
-		}
+	cmd := h.config.Commands[update.Message.Command()]
+	if cmd == nil {
+		logrus.Error("no such command")
+		h.bot.SendMessage(update.Message.Chat.ID, "не распознана команда "+update.Message.Command())
+		return
 	}
+
+	//обрабатываем команду
+	h.handleCommand(update, cmd)
 }
 
 func (h *Handler) handleCommand(upd *tgbotapi.Update, cmd *Command) {
@@ -74,29 +79,30 @@ func (h *Handler) handleCommand(upd *tgbotapi.Update, cmd *Command) {
 		if cmd.Reply.Keyboard != nil && *cmd.Reply.Keyboard != "" {
 			rMessage := ""
 			keyboard := make([][]tgbotapi.InlineKeyboardButton, 0)
+
+			kb := h.config.Keyboards[*cmd.Reply.Keyboard]
+			if kb == nil {
+				logrus.Errorf("не удалось найти клавиутуру с именем : %s", *cmd.Reply.Keyboard)
+				return
+			}
 			//поиск keyboard в конфиге
-			for _, kb := range h.config.Keyboards {
-				if *cmd.Reply.Keyboard == kb.Name {
-					logrus.Infof("keyboard is %+v", kb)
-					// текст сообщения с клавиатурой
-					rMessage = kb.Message
-					//проходимся по блоку Buttons по каждому Row
-					for _, r := range kb.Buttons {
-						row := make([]tgbotapi.InlineKeyboardButton, 0)
-						//проходимся по кнопкам внутри Row
-						for _, b := range r.Row {
-							//заполняем CallBackData
-							data := ""
-							if b.Handler != nil {
-								data = *b.Handler
-							}
-							btn := tgbotapi.NewInlineKeyboardButtonData(b.Text, data)
-							row = append(row, btn)
-						}
-						keyboard = append(keyboard, row)
+			logrus.Infof("keyboard is %+v", kb)
+			// текст сообщения с клавиатурой
+			rMessage = kb.Message
+			//проходимся по блоку Buttons по каждому Row
+			for _, r := range kb.Buttons {
+				row := make([]tgbotapi.InlineKeyboardButton, 0)
+				//проходимся по кнопкам внутри Row
+				for _, b := range r.Row {
+					//заполняем CallBackData
+					data := ""
+					if b.Handler != nil {
+						data = *b.Handler
 					}
-					break
+					btn := tgbotapi.NewInlineKeyboardButtonData(b.Text, data)
+					row = append(row, btn)
 				}
+				keyboard = append(keyboard, row)
 			}
 
 			replyMessage := tgbotapi.NewMessage(upd.Message.Chat.ID, rMessage)
@@ -107,7 +113,7 @@ func (h *Handler) handleCommand(upd *tgbotapi.Update, cmd *Command) {
 	}
 }
 
-func formatHelpMessage(cmds []Command) string {
+func formatHelpMessage(cmds map[string]*Command) string {
 	sb := strings.Builder{}
 	for _, c := range cmds {
 		sb.WriteString(fmt.Sprintf("%s - %s \n", c.Name, c.Description))
