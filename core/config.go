@@ -35,10 +35,11 @@ type KeyboardRow struct {
 }
 
 type Keyboard struct {
-	Name    string        `yaml:"name"`
-	Message string        `yaml:"message"`
-	Type    string        `yaml:"type"`
-	Buttons []KeyboardRow `yaml:"buttons"`
+	Name    string         `yaml:"name"`
+	Type    string         `yaml:"type"`
+	Script  *string        `yaml:"script,omitempty"`
+	Message *string        `yaml:"message,omitempty"`
+	Buttons *[]KeyboardRow `yaml:"buttons,omitempty"`
 }
 
 type YamlConfig struct {

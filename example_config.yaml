@@ -10,6 +10,10 @@ commands:
     description: "тест меню"
     reply:
       keyboard: "main_menu"
+  - name: "menu2"
+    description: "тест меню"
+    reply:
+      keyboard: "second_menu"
 
 #регестрируют го методы в луа
 #работа с файлами/дб прокидывается как интерфейс который дергает луа, от модуля зависит реализация
@@ -39,6 +43,9 @@ keyboards:
           - name: "btn4"
             text: "Кнопка 2"
             handler: "btn1_handler.lua"
+  - name: "second_menu"
+    type: "inline" # или "reply"
+    script: "keyboard_second_menu.lua"
 
 #обработка последовательных вопросов к пользователю
 forms:
