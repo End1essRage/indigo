@@ -1,0 +1,69 @@
+bot:
+  token: "token"
+  mode: "polling"
+
+commands:
+  - name: "start"
+    description: "Приветствие"
+    handler: "welcome.lua"
+  - name: "menu"
+    description: "тест меню"
+    reply:
+      keyboard: "main_menu"
+
+#регестрируют го методы в луа
+#работа с файлами/дб прокидывается как интерфейс который дергает луа, от модуля зависит реализация
+modules:
+  - name: "mongo"
+    params: "some params"
+  - name: "ya_disk" 
+
+#создание клавиатур
+keyboards:
+  - name: "main_menu"
+    type: "inline" # или "reply"
+    message: "main"
+    buttons:
+      - row:
+          - name: "btn1"
+            text: "Кнопка 1"
+            handler: "btn1_handler.lua"
+          - name: "btn2"
+            text: "Кнопка 2"
+            callback_data: "customData"
+            handler: "btn1_handler.lua"
+      - row:
+          - name: "btn3"
+            text: "Кнопка 1"
+            handler: "btn1_handler.lua"
+          - name: "btn4"
+            text: "Кнопка 2"
+            handler: "btn1_handler.lua"
+
+#обработка последовательных вопросов к пользователю
+forms:
+  - name: "form1"
+    stages:
+      - name: "first stage"
+        output: "введите имя" #msg or script/keyboard
+        input: "user_name"
+      - name: "btn stages"
+        output: 
+          keyboard: "some_keyboard"
+    output:
+      - val: "user_name"
+        type: string
+      - val: "user_old"
+        type: int
+
+#входные и выходные интеграции
+integrations:
+  in:
+    - name: ""
+      data: 
+        - val: ""
+          type: 
+      handler: ""
+  out:
+
+  
