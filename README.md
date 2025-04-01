@@ -43,12 +43,17 @@ keyboards:
           - name: "btn4"
             text: "Кнопка 2"
             handler: "btn1_handler.lua"
-
+```
 2. Пример скрипта (welcome.lua)
-
+```lua
 local function handle()
     log("Скрипт запущен! User ID: " .. ctx.user.id)
     send_message(ctx.chat_id, "Hello, " .. ctx.user.from_name)
 end
 
 handle()
+```
+Запуск
+```bash
+make build_and_run
+```
