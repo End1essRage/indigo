@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -24,11 +25,17 @@ func (h *Handler) HandleUpdate(update *tgbotapi.Update) {
 		lCtx := FromCallbackQueryToLuaContext(update.CallbackQuery)
 
 		logrus.Infof("cbdata handler is %s", lCtx.CbData.Handler)
+		logrus.Infof("cbdata data is %s", lCtx.CbData.Data)
 
-		scriptPath := fmt.Sprintf("scripts/%s", lCtx.CbData.Handler)
-		if err := h.le.ExecuteScript(scriptPath, lCtx); err != nil {
-			logrus.Errorf("Error executing script: %v", err)
+		if lCtx.CbData.Handler != "" {
+			scriptPath := fmt.Sprintf("scripts/%s", lCtx.CbData.Handler)
+			if err := h.le.ExecuteScript(scriptPath, lCtx); err != nil {
+				logrus.Errorf("Error executing script: %v", err)
+			}
+		} else {
+			h.bot.SendMessage(lCtx.ChatId, fmt.Sprintf("no script custom data is %s", lCtx.CbData.Data))
 		}
+
 		return
 	}
 	//отбрасываем с пустым сообщением(надо будет убрать для обработки кнопок)
@@ -78,7 +85,6 @@ func (h *Handler) handleCommand(upd *tgbotapi.Update, cmd *Command) {
 
 		if cmd.Reply.Keyboard != nil && *cmd.Reply.Keyboard != "" {
 			rMessage := ""
-			keyboard := make([][]tgbotapi.InlineKeyboardButton, 0)
 
 			kb := h.config.Keyboards[*cmd.Reply.Keyboard]
 			if kb == nil {
@@ -89,21 +95,29 @@ func (h *Handler) handleCommand(upd *tgbotapi.Update, cmd *Command) {
 			logrus.Infof("keyboard is %+v", kb)
 			// текст сообщения с клавиатурой
 			rMessage = kb.Message
+
+			kbMesh := Kb{}
 			//проходимся по блоку Buttons по каждому Row
 			for _, r := range kb.Buttons {
-				row := make([]tgbotapi.InlineKeyboardButton, 0)
+				row := make([]KbButton, 0)
 				//проходимся по кнопкам внутри Row
 				for _, b := range r.Row {
+					btn := KbButton{Name: b.Name, Text: b.Text}
 					//заполняем CallBackData
-					data := ""
 					if b.Handler != nil {
-						data = *b.Handler
+						btn.Script = *b.Handler
 					}
-					btn := tgbotapi.NewInlineKeyboardButtonData(b.Text, data)
+					if b.CallbackData != nil {
+						logrus.Warnf("custom data %s ", *b.CallbackData)
+						btn.CustomCbData = *b.CallbackData
+					}
+
 					row = append(row, btn)
 				}
-				keyboard = append(keyboard, row)
+				kbMesh.Rows = append(kbMesh.Rows, row)
 			}
+
+			keyboard := createKeyboard(kbMesh)
 
 			replyMessage := tgbotapi.NewMessage(upd.Message.Chat.ID, rMessage)
 			replyMessage.ReplyMarkup = tgbotapi.InlineKeyboardMarkup{InlineKeyboard: keyboard}
@@ -111,6 +125,48 @@ func (h *Handler) handleCommand(upd *tgbotapi.Update, cmd *Command) {
 			h.le.bot.Send(replyMessage)
 		}
 	}
+}
+
+type Kb struct {
+	Rows [][]KbButton
+}
+
+type KbButton struct {
+	Name         string
+	Text         string
+	CustomCbData string
+	Script       string
+}
+
+type CbData struct {
+	Script *string `json:"script,omitempty"`
+	Data   *string `json:"data,omitempty"`
+}
+
+func (b KbButton) formatCbData() string {
+	data := CbData{Data: &b.CustomCbData, Script: &b.Script}
+	body, err := json.Marshal(data)
+	if err != nil {
+		logrus.Error("ошибка сериализации")
+	}
+	return fmt.Sprintf("%s", body)
+}
+
+func createKeyboard(mesh Kb) [][]tgbotapi.InlineKeyboardButton {
+	keyboard := make([][]tgbotapi.InlineKeyboardButton, 0)
+	//проходимся по блоку Buttons по каждому Row
+	for _, r := range mesh.Rows {
+		row := make([]tgbotapi.InlineKeyboardButton, 0)
+		//проходимся по кнопкам внутри Row
+		for _, b := range r {
+			//заполняем CallBackData
+			btn := tgbotapi.NewInlineKeyboardButtonData(b.Text, b.formatCbData())
+			row = append(row, btn)
+		}
+		keyboard = append(keyboard, row)
+	}
+
+	return keyboard
 }
 
 func formatHelpMessage(cmds map[string]*Command) string {

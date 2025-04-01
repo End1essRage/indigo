@@ -62,6 +62,7 @@ func (le *LuaEngine) ExecuteScript(scriptPath string, lContext LuaContext) error
 
 	L.SetField(ctx, "chat_id", lua.LNumber(lContext.ChatId))
 	L.SetField(ctx, "text", lua.LString(lContext.MessageText))
+	L.SetField(ctx, "cb_data", lua.LString(lContext.CbData.Data))
 	user := L.NewTable()
 	L.SetField(user, "id", lua.LNumber(lContext.FromId))
 	L.SetField(user, "from_name", lua.LString(lContext.FromName))

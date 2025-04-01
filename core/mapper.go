@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/sirupsen/logrus"
 )
@@ -15,6 +17,7 @@ type LuaContext struct {
 
 type LuaCbData struct {
 	Handler string
+	Data    string
 }
 
 func FromTgUpdateToLuaContext(update *tgbotapi.Update) LuaContext {
@@ -37,7 +40,13 @@ func FromCallbackQueryToLuaContext(cb *tgbotapi.CallbackQuery) LuaContext {
 
 func FromCallbackDataToLuaCbData(data string) LuaCbData {
 	res := LuaCbData{}
-	res.Handler = data
-	logrus.Warn(res.Handler)
+	d := CbData{}
+	if err := json.Unmarshal([]byte(data), &d); err != nil {
+		logrus.Error("ошибка десериализции")
+	}
+
+	res.Handler = *d.Script
+	res.Data = *d.Data
+
 	return res
 }
