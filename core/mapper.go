@@ -17,8 +17,8 @@ type LuaContext struct {
 }
 
 type LuaCbData struct {
-	Handler string
-	Data    string
+	Script string
+	Data   string
 }
 
 func FromTgUpdateToLuaContext(update *tgbotapi.Update) LuaContext {
@@ -46,13 +46,13 @@ func FromCallbackDataToLuaCbData(data string) LuaCbData {
 		logrus.Error("ошибка десериализции")
 	}
 
-	res.Handler = *d.Script
+	res.Script = *d.Script
 	res.Data = *d.Data
 
 	return res
 }
 
-// Новая функция для конвертации Lua таблицы в MeshKeyboard
+// функция для конвертации Lua таблицы в MeshKeyboard
 func FromLuaTableToMeshKeyboard(L *lua.LState, lt *lua.LTable) MeshKeyboard {
 	var mesh MeshKeyboard
 

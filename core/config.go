@@ -14,7 +14,7 @@ type BotConfig struct {
 type Command struct {
 	Name        string  `yaml:"name"`
 	Description string  `yaml:"description"`
-	Handler     *string `yaml:"handler,omitempty"`
+	Script      *string `yaml:"script,omitempty"`
 	Reply       *Reply  `yaml:"reply,omitempty"`
 }
 
@@ -24,10 +24,10 @@ type Reply struct {
 }
 
 type Button struct {
-	Name         string  `yaml:"name"`
-	Text         string  `yaml:"text"`
-	CallbackData *string `yaml:"callback_data,omitempty"`
-	Handler      *string `yaml:"handler,omitempty"`
+	Name   string  `yaml:"name"`
+	Text   string  `yaml:"text"`
+	Data   *string `yaml:"data,omitempty"`
+	Script *string `yaml:"script,omitempty"`
 }
 
 type KeyboardRow struct {
