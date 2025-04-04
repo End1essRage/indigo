@@ -23,24 +23,28 @@ func (h *Handler) HandleUpdate(update *tgbotapi.Update) {
 	if update.CallbackQuery != nil {
 		lCtx := FromCallbackQueryToLuaContext(update.CallbackQuery)
 
-		logrus.Infof("cbdata handler is %s", lCtx.CbData.Handler)
+		logrus.Infof("cbdata script is %s", lCtx.CbData.Script)
+		logrus.Infof("cbdata data is %s", lCtx.CbData.Data)
 
-		scriptPath := fmt.Sprintf("scripts/%s", lCtx.CbData.Handler)
-		if err := h.le.ExecuteScript(scriptPath, lCtx); err != nil {
-			logrus.Errorf("Error executing script: %v", err)
+		if lCtx.CbData.Script != "" {
+			scriptPath := fmt.Sprintf("scripts/%s", lCtx.CbData.Script)
+			if err := h.le.ExecuteScript(scriptPath, lCtx); err != nil {
+				logrus.Errorf("Error executing script: %v", err)
+			}
+		} else {
+			h.bot.SendMessage(lCtx.ChatId, fmt.Sprintf("no script custom data is %s", lCtx.CbData.Data))
 		}
+
 		return
 	}
 	//отбрасываем с пустым сообщением(надо будет убрать для обработки кнопок)
 	if update.Message == nil {
 		return
-
 	}
 
 	//отбрасываем все кроме команд
 	if !update.Message.IsCommand() {
 		return
-
 	}
 
 	//TODO возможность перезаписать через yml
@@ -63,8 +67,8 @@ func (h *Handler) HandleUpdate(update *tgbotapi.Update) {
 
 func (h *Handler) handleCommand(upd *tgbotapi.Update, cmd *Command) {
 	//запуск скрипта
-	if cmd.Handler != nil && *cmd.Handler != "" {
-		scriptPath := fmt.Sprintf("scripts/%s", *cmd.Handler)
+	if cmd.Script != nil && *cmd.Script != "" {
+		scriptPath := fmt.Sprintf("scripts/%s", *cmd.Script)
 		if err := h.le.ExecuteScript(scriptPath, FromTgUpdateToLuaContext(upd)); err != nil {
 			logrus.Errorf("Error executing script: %v", err)
 		}
@@ -76,41 +80,105 @@ func (h *Handler) handleCommand(upd *tgbotapi.Update, cmd *Command) {
 			h.le.bot.SendMessage(upd.Message.Chat.ID, *cmd.Reply.Msg)
 		}
 
+		// обработка клавиатуры
 		if cmd.Reply.Keyboard != nil && *cmd.Reply.Keyboard != "" {
-			rMessage := ""
-			keyboard := make([][]tgbotapi.InlineKeyboardButton, 0)
-
+			// ищем по имени в map
 			kb := h.config.Keyboards[*cmd.Reply.Keyboard]
 			if kb == nil {
 				logrus.Errorf("не удалось найти клавиутуру с именем : %s", *cmd.Reply.Keyboard)
 				return
 			}
-			//поиск keyboard в конфиге
-			logrus.Infof("keyboard is %+v", kb)
-			// текст сообщения с клавиатурой
-			rMessage = kb.Message
-			//проходимся по блоку Buttons по каждому Row
-			for _, r := range kb.Buttons {
-				row := make([]tgbotapi.InlineKeyboardButton, 0)
-				//проходимся по кнопкам внутри Row
-				for _, b := range r.Row {
-					//заполняем CallBackData
-					data := ""
-					if b.Handler != nil {
-						data = *b.Handler
-					}
-					btn := tgbotapi.NewInlineKeyboardButtonData(b.Text, data)
-					row = append(row, btn)
-				}
-				keyboard = append(keyboard, row)
+
+			switch kb.Type {
+			case "inline":
+				// обрабатываем клавиатуру из конфига
+				kbMesh, rMessage := h.parseInlineKeyboard(kb, upd)
+
+				keyboard := createInlineKeyboard(kbMesh)
+
+				replyMessage := tgbotapi.NewMessage(upd.Message.Chat.ID, rMessage)
+				replyMessage.ReplyMarkup = tgbotapi.InlineKeyboardMarkup{InlineKeyboard: keyboard}
+
+				h.le.bot.Send(replyMessage)
+
+			case "reply":
+				// обрабатываем клавиатуру из конфига
+				kbMesh, rMessage := h.parseReplyKeyboard(kb, upd)
+
+				keyboard := createReplyKeyboard(kbMesh)
+
+				replyMessage := tgbotapi.NewMessage(upd.Message.Chat.ID, rMessage)
+				replyMessage.ReplyMarkup = tgbotapi.ReplyKeyboardMarkup{Keyboard: keyboard}
+
+				h.le.bot.Send(replyMessage)
 			}
 
-			replyMessage := tgbotapi.NewMessage(upd.Message.Chat.ID, rMessage)
-			replyMessage.ReplyMarkup = tgbotapi.InlineKeyboardMarkup{InlineKeyboard: keyboard}
-
-			h.le.bot.Send(replyMessage)
 		}
 	}
+}
+
+func (h *Handler) parseInlineKeyboard(kb *Keyboard, upd *tgbotapi.Update) (MeshInlineKeyboard, string) {
+	kbMesh := MeshInlineKeyboard{}
+	rMessage := ""
+	//если скрипт
+	if kb.Script != nil && *kb.Script != "" {
+		scriptPath := fmt.Sprintf("scripts/%s", *kb.Script)
+		if err := h.le.ExecuteScript(scriptPath, FromTgUpdateToLuaContext(upd)); err != nil {
+			logrus.Errorf("Error executing script: %v", err)
+		}
+	} else {
+		rMessage = *kb.Message
+
+		//проходимся по блоку Buttons по каждому Row
+		for _, r := range *kb.Buttons {
+			row := make([]MeshInlineButton, 0)
+			//проходимся по кнопкам внутри Row
+			for _, b := range r.Row {
+				btn := MeshInlineButton{Name: b.Name, Text: b.Text}
+				//заполняем CallBackData
+				if b.Script != nil {
+					btn.Script = *b.Script
+				}
+				if b.Data != nil {
+					logrus.Warnf("custom data %s ", *b.Data)
+					btn.CustomCbData = *b.Data
+				}
+
+				row = append(row, btn)
+			}
+			kbMesh.Rows = append(kbMesh.Rows, row)
+		}
+	}
+
+	return kbMesh, rMessage
+}
+
+func (h *Handler) parseReplyKeyboard(kb *Keyboard, upd *tgbotapi.Update) (MeshReplyKeyboard, string) {
+	kbMesh := MeshReplyKeyboard{}
+	rMessage := ""
+	//если скрипт
+	if kb.Script != nil && *kb.Script != "" {
+		scriptPath := fmt.Sprintf("scripts/%s", *kb.Script)
+		if err := h.le.ExecuteScript(scriptPath, FromTgUpdateToLuaContext(upd)); err != nil {
+			logrus.Errorf("Error executing script: %v", err)
+		}
+	} else {
+		rMessage = *kb.Message
+
+		//проходимся по блоку Buttons по каждому Row
+		for _, r := range *kb.Buttons {
+			row := make([]MeshReplyButton, 0)
+			//проходимся по кнопкам внутри Row
+			for _, b := range r.Row {
+				btn := MeshReplyButton{Text: b.Text}
+
+				row = append(row, btn)
+			}
+			kbMesh.Rows = append(kbMesh.Rows, row)
+		}
+	}
+
+	return kbMesh, rMessage
 }
 
 func formatHelpMessage(cmds map[string]*Command) string {

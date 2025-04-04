@@ -5,18 +5,19 @@ bot:
 commands:
   - name: "start"
     description: "Приветствие"
-    handler: "welcome.lua"
+    script: "welcome.lua"
   - name: "menu"
     description: "тест меню"
     reply:
       keyboard: "main_menu"
-
-#регестрируют го методы в луа
-#работа с файлами/дб прокидывается как интерфейс который дергает луа, от модуля зависит реализация
-modules:
-  - name: "mongo"
-    params: "some params"
-  - name: "ya_disk" 
+  - name: "menu2"
+    description: "тест меню"
+    reply:
+      keyboard: "second_menu"
+  - name: "rmenu"
+    description: "reply меню"
+    reply:
+      keyboard: "reply_menu"
 
 #создание клавиатур
 keyboards:
@@ -27,18 +28,32 @@ keyboards:
       - row:
           - name: "btn1"
             text: "Кнопка 1"
-            handler: "btn1_handler.lua"
+            script: "btn1_handler.lua"
           - name: "btn2"
             text: "Кнопка 2"
-            callback_data: "customData"
-            handler: "btn1_handler.lua"
+            data: "customData btn2"
+            script: "btn1_handler.lua"
       - row:
           - name: "btn3"
-            text: "Кнопка 1"
-            handler: "btn1_handler.lua"
+            text: "Кнопка 3"
+            script: "btn1_handler.lua"
           - name: "btn4"
-            text: "Кнопка 2"
-            handler: "btn1_handler.lua"
+            text: "Кнопка 4"
+            data: "customData btn4"
+  - name: "second_menu"
+    type: "inline" # или "reply"
+    script: "keyboard_second_menu.lua"
+  - name: "reply_menu"
+    type: "reply" # или "reply"
+    message: "reply"
+    buttons:
+      - row:
+          - text: "Кнопка 1"
+          - text: "Кнопка 2"
+      - row:
+          - text: "Кнопка 3"
+          - text: "Кнопка 4"
+
 
 #обработка последовательных вопросов к пользователю
 forms:

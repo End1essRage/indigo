@@ -48,6 +48,30 @@ func (le *LuaEngine) RegisterFunctions(L *lua.LState) {
 		}
 		return 0
 	}))
+
+	//отправка клавиатуры
+	L.SetGlobal("send_keyboard", L.NewFunction(func(L *lua.LState) int {
+		chatID := L.CheckInt64(1)
+		text := L.CheckString(2)
+		meshTable := L.CheckTable(3) // Принимаем таблицу вместо JSON строки
+
+		// Конвертируем Lua таблицу в структуру Go
+		mesh := FromLuaTableToMeshInlineKeyboard(L, meshTable)
+
+		// Создаем и отправляем сообщение
+		msg := tgbotapi.NewMessage(chatID, text)
+		msg.ReplyMarkup = tgbotapi.InlineKeyboardMarkup{
+			InlineKeyboard: createInlineKeyboard(mesh),
+		}
+
+		if err := le.bot.Send(msg); err != nil {
+			logrus.Errorf("Error sending keyboard: %v", err)
+			L.Push(lua.LString("send failed"))
+			return 1
+		}
+
+		return 0
+	}))
 }
 
 func (le *LuaEngine) ExecuteScript(scriptPath string, lContext LuaContext) error {
@@ -62,6 +86,7 @@ func (le *LuaEngine) ExecuteScript(scriptPath string, lContext LuaContext) error
 
 	L.SetField(ctx, "chat_id", lua.LNumber(lContext.ChatId))
 	L.SetField(ctx, "text", lua.LString(lContext.MessageText))
+	L.SetField(ctx, "cb_data", lua.LString(lContext.CbData.Data))
 	user := L.NewTable()
 	L.SetField(user, "id", lua.LNumber(lContext.FromId))
 	L.SetField(user, "from_name", lua.LString(lContext.FromName))
