@@ -14,6 +14,10 @@ commands:
     description: "тест меню"
     reply:
       keyboard: "second_menu"
+  - name: "rmenu"
+    description: "reply меню"
+    reply:
+      keyboard: "reply_menu"
 
 #создание клавиатур
 keyboards:
@@ -39,6 +43,16 @@ keyboards:
   - name: "second_menu"
     type: "inline" # или "reply"
     script: "keyboard_second_menu.lua"
+  - name: "reply_menu"
+    type: "reply" # или "reply"
+    message: "reply"
+    buttons:
+      - row:
+          - text: "Кнопка 1"
+          - text: "Кнопка 2"
+      - row:
+          - text: "Кнопка 3"
+          - text: "Кнопка 4"
 
 
 #обработка последовательных вопросов к пользователю

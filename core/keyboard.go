@@ -8,11 +8,19 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type MeshKeyboard struct {
-	Rows [][]MeshButton
+type MeshReplyKeyboard struct {
+	Rows [][]MeshReplyButton
 }
 
-type MeshButton struct {
+type MeshReplyButton struct {
+	Text string
+}
+
+type MeshInlineKeyboard struct {
+	Rows [][]MeshInlineButton
+}
+
+type MeshInlineButton struct {
 	Name         string
 	Text         string
 	CustomCbData string
@@ -24,7 +32,7 @@ type CbData struct {
 	Data   *string `json:"data,omitempty"`
 }
 
-func (b MeshButton) formatCbData() string {
+func (b MeshInlineButton) formatCbData() string {
 	data := CbData{Data: &b.CustomCbData, Script: &b.Script}
 	body, err := json.Marshal(data)
 	if err != nil {
@@ -33,7 +41,7 @@ func (b MeshButton) formatCbData() string {
 	return fmt.Sprintf("%s", body)
 }
 
-func createKeyboard(mesh MeshKeyboard) [][]tgbotapi.InlineKeyboardButton {
+func createInlineKeyboard(mesh MeshInlineKeyboard) [][]tgbotapi.InlineKeyboardButton {
 	keyboard := make([][]tgbotapi.InlineKeyboardButton, 0)
 	//проходимся по блоку Buttons по каждому Row
 	for _, r := range mesh.Rows {
@@ -42,6 +50,23 @@ func createKeyboard(mesh MeshKeyboard) [][]tgbotapi.InlineKeyboardButton {
 		for _, b := range r {
 			//заполняем CallBackData
 			btn := tgbotapi.NewInlineKeyboardButtonData(b.Text, b.formatCbData())
+			row = append(row, btn)
+		}
+		keyboard = append(keyboard, row)
+	}
+
+	return keyboard
+}
+
+func createReplyKeyboard(mesh MeshReplyKeyboard) [][]tgbotapi.KeyboardButton {
+	keyboard := make([][]tgbotapi.KeyboardButton, 0)
+	//проходимся по блоку Buttons по каждому Row
+	for _, r := range mesh.Rows {
+		row := make([]tgbotapi.KeyboardButton, 0)
+		//проходимся по кнопкам внутри Row
+		for _, b := range r {
+			//заполняем CallBackData
+			btn := tgbotapi.NewKeyboardButton(b.Text)
 			row = append(row, btn)
 		}
 		keyboard = append(keyboard, row)

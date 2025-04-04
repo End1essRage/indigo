@@ -56,12 +56,12 @@ func (le *LuaEngine) RegisterFunctions(L *lua.LState) {
 		meshTable := L.CheckTable(3) // Принимаем таблицу вместо JSON строки
 
 		// Конвертируем Lua таблицу в структуру Go
-		mesh := FromLuaTableToMeshKeyboard(L, meshTable)
+		mesh := FromLuaTableToMeshInlineKeyboard(L, meshTable)
 
 		// Создаем и отправляем сообщение
 		msg := tgbotapi.NewMessage(chatID, text)
 		msg.ReplyMarkup = tgbotapi.InlineKeyboardMarkup{
-			InlineKeyboard: createKeyboard(mesh),
+			InlineKeyboard: createInlineKeyboard(mesh),
 		}
 
 		if err := le.bot.Send(msg); err != nil {

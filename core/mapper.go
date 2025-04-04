@@ -53,18 +53,18 @@ func FromCallbackDataToLuaCbData(data string) LuaCbData {
 }
 
 // функция для конвертации Lua таблицы в MeshKeyboard
-func FromLuaTableToMeshKeyboard(L *lua.LState, lt *lua.LTable) MeshKeyboard {
-	var mesh MeshKeyboard
+func FromLuaTableToMeshInlineKeyboard(L *lua.LState, lt *lua.LTable) MeshInlineKeyboard {
+	var mesh MeshInlineKeyboard
 
 	lt.ForEach(func(key lua.LValue, value lua.LValue) {
 		if key.String() == "Rows" {
 			if rows, ok := value.(*lua.LTable); ok {
 				rows.ForEach(func(rowKey lua.LValue, rowValue lua.LValue) {
 					if row, ok := rowValue.(*lua.LTable); ok {
-						var meshRow []MeshButton
+						var meshRow []MeshInlineButton
 						row.ForEach(func(btnKey lua.LValue, btnValue lua.LValue) {
 							if btn, ok := btnValue.(*lua.LTable); ok {
-								var meshBtn MeshButton
+								var meshBtn MeshInlineButton
 								btn.ForEach(func(fieldKey lua.LValue, fieldValue lua.LValue) {
 									switch fieldKey.String() {
 									case "Text":
