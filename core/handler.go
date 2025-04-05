@@ -44,6 +44,9 @@ func (h *Handler) HandleUpdate(update *tgbotapi.Update) {
 	if update.CallbackQuery != nil {
 		lCtx := FromCallbackQueryToLuaContext(update.CallbackQuery)
 
+		//удаляем сообщение с клавиатурой
+		h.bot.DeleteMsg(lCtx.ChatId, update.CallbackQuery.Message.MessageID)
+
 		logrus.Infof("cbdata script is %s", lCtx.CbData.Script)
 		logrus.Infof("cbdata data is %s", lCtx.CbData.Data)
 
@@ -58,7 +61,7 @@ func (h *Handler) HandleUpdate(update *tgbotapi.Update) {
 
 		return
 	}
-	//отбрасываем с пустым сообщением(надо будет убрать для обработки кнопок)
+
 	if update.Message == nil {
 		return
 	}

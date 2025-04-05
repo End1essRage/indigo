@@ -24,3 +24,10 @@ func (t *TgBot) Send(msg tgbotapi.MessageConfig) error {
 
 	return err
 }
+
+func (t *TgBot) DeleteMsg(chatId int64, msgId int) error {
+	d := tgbotapi.NewDeleteMessage(chatId, msgId)
+	_, err := t.bot.Send(d)
+
+	return err
+}
