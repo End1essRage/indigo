@@ -7,8 +7,7 @@ import (
 )
 
 type BotConfig struct {
-	Token string `yaml:"token"`
-	Mode  string `yaml:"mode"`
+	Mode string `yaml:"mode"`
 }
 
 type Command struct {

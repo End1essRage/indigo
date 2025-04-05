@@ -1,5 +1,4 @@
 bot:
-  token: "token"
   mode: "polling"
 
 commands:
