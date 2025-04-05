@@ -8,10 +8,9 @@
 
 ## 🚀 Быстрый старт
 
-### 1. Конфигурация (`config/config.yml`)
+### 1. Конфигурация
 ```yaml
 bot:
-  token: "<token>"
   mode: "polling"  # Или "webhook"
   
 commands:
@@ -44,7 +43,10 @@ keyboards:
             text: "Кнопка 2"
             handler: "btn1_handler.lua"
 ```
-2. Пример скрипта (welcome.lua)
+2. Переменные окружения:
+BOT_TOKEN
+CONFIG_PATH
+3. Пример скрипта (welcome.lua)
 ```lua
 local function handle()
     log("Скрипт запущен! User ID: " .. ctx.user.id)

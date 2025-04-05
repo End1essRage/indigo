@@ -7,20 +7,15 @@ import (
 )
 
 type BotConfig struct {
-	Token string `yaml:"token"`
-	Mode  string `yaml:"mode"`
+	Mode string `yaml:"mode"`
 }
 
 type Command struct {
 	Name        string  `yaml:"name"`
 	Description string  `yaml:"description"`
 	Script      *string `yaml:"script,omitempty"`
-	Reply       *Reply  `yaml:"reply,omitempty"`
-}
-
-type Reply struct {
-	Msg      *string `yaml:"msg,omitempty"`
-	Keyboard *string `yaml:"keyboard,omitempty"`
+	Reply       *string `yaml:"reply,omitempty"`
+	Keyboard    *string `yaml:"keyboard,omitempty"`
 }
 
 type Button struct {
@@ -36,7 +31,6 @@ type KeyboardRow struct {
 
 type Keyboard struct {
 	Name    string         `yaml:"name"`
-	Type    string         `yaml:"type"`
 	Script  *string        `yaml:"script,omitempty"`
 	Message *string        `yaml:"message,omitempty"`
 	Buttons *[]KeyboardRow `yaml:"buttons,omitempty"`

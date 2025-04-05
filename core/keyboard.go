@@ -58,19 +58,27 @@ func createInlineKeyboard(mesh MeshInlineKeyboard) [][]tgbotapi.InlineKeyboardBu
 	return keyboard
 }
 
-func createReplyKeyboard(mesh MeshReplyKeyboard) [][]tgbotapi.KeyboardButton {
-	keyboard := make([][]tgbotapi.KeyboardButton, 0)
+func parseInlineKeyboard(kb *Keyboard) MeshInlineKeyboard {
+	kbMesh := MeshInlineKeyboard{}
+
 	//проходимся по блоку Buttons по каждому Row
-	for _, r := range mesh.Rows {
-		row := make([]tgbotapi.KeyboardButton, 0)
+	for _, r := range *kb.Buttons {
+		row := make([]MeshInlineButton, 0)
 		//проходимся по кнопкам внутри Row
-		for _, b := range r {
+		for _, b := range r.Row {
+			btn := MeshInlineButton{Name: b.Name, Text: b.Text}
 			//заполняем CallBackData
-			btn := tgbotapi.NewKeyboardButton(b.Text)
+			if b.Script != nil {
+				btn.Script = *b.Script
+			}
+			if b.Data != nil {
+				btn.CustomCbData = *b.Data
+			}
+
 			row = append(row, btn)
 		}
-		keyboard = append(keyboard, row)
+		kbMesh.Rows = append(kbMesh.Rows, row)
 	}
 
-	return keyboard
+	return kbMesh
 }

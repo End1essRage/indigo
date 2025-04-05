@@ -1,0 +1,11 @@
+version: '3'
+
+vars:
+  BINARY_NAME: "indigo.exe"
+
+tasks:
+  build_and_run:
+    desc: Build and run the binary
+    cmds:
+      - cd core && go build -o ../{{.BINARY_NAME}}
+      - ./{{.BINARY_NAME}}
