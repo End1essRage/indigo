@@ -3,7 +3,9 @@ package main
 import (
 	"log"
 	"os"
+	"os/signal"
 	"path"
+	"syscall"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
@@ -75,7 +77,16 @@ func main() {
 
 	logrus.Info("start processing")
 	// обработка обновлений
-	for update := range updates {
-		handler.HandleUpdate(&update)
-	}
+	go func() {
+		for update := range updates {
+			handler.HandleUpdate(&update)
+		}
+	}()
+
+	// Graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	logrus.Info("Server stopped")
 }
