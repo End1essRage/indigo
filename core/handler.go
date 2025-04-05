@@ -109,40 +109,39 @@ func (h *Handler) handleCommand(upd *tgbotapi.Update, cmd *Command) {
 		}
 	}
 
-	//обработка блока Reply
-	if cmd.Reply != nil {
-		if cmd.Reply != nil && *cmd.Reply != "" {
-			h.le.bot.SendMessage(upd.Message.Chat.ID, *cmd.Reply)
+	//обработка сообщения Reply
+	if cmd.Reply != nil && *cmd.Reply != "" {
+		h.le.bot.SendMessage(upd.Message.Chat.ID, *cmd.Reply)
+	}
+
+	// обработка клавиатуры
+	if cmd.Keyboard != nil && *cmd.Keyboard != "" {
+		// ищем по имени в map
+		kb := h.config.Keyboards[*cmd.Keyboard]
+		if kb == nil {
+			logrus.Errorf("не удалось найти клавиутуру с именем : %s", *cmd.Keyboard)
+			return
 		}
 
-		// обработка клавиатуры
-		if cmd.Keyboard != nil && *cmd.Keyboard != "" {
-			// ищем по имени в map
-			kb := h.config.Keyboards[*cmd.Keyboard]
-			if kb == nil {
-				logrus.Errorf("не удалось найти клавиутуру с именем : %s", *cmd.Keyboard)
-				return
+		// обрабатываем клавиатуру из конфига
+		if kb.Script != nil && *kb.Script != "" {
+			scriptPath := fmt.Sprintf("scripts/%s", *kb.Script)
+			if err := h.le.ExecuteScript(scriptPath, FromTgUpdateToLuaContext(upd)); err != nil {
+				logrus.Errorf("Error executing script: %v", err)
 			}
+		} else {
+			rMessage := *kb.Message
+			kbMesh := parseInlineKeyboard(kb)
 
-			// обрабатываем клавиатуру из конфига
-			if kb.Script != nil && *kb.Script != "" {
-				scriptPath := fmt.Sprintf("scripts/%s", *kb.Script)
-				if err := h.le.ExecuteScript(scriptPath, FromTgUpdateToLuaContext(upd)); err != nil {
-					logrus.Errorf("Error executing script: %v", err)
-				}
-			} else {
-				rMessage := *kb.Message
-				kbMesh := parseInlineKeyboard(kb)
+			keyboard := createInlineKeyboard(kbMesh)
 
-				keyboard := createInlineKeyboard(kbMesh)
+			replyMessage := tgbotapi.NewMessage(upd.Message.Chat.ID, rMessage)
+			replyMessage.ReplyMarkup = tgbotapi.InlineKeyboardMarkup{InlineKeyboard: keyboard}
 
-				replyMessage := tgbotapi.NewMessage(upd.Message.Chat.ID, rMessage)
-				replyMessage.ReplyMarkup = tgbotapi.InlineKeyboardMarkup{InlineKeyboard: keyboard}
-
-				h.le.bot.Send(replyMessage)
-			}
+			h.le.bot.Send(replyMessage)
 		}
 	}
+
 }
 
 func formatHelpMessage(cmds map[string]*Command) string {
