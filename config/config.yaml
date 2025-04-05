@@ -7,21 +7,17 @@ commands:
     script: "welcome.lua"
   - name: "menu"
     description: "тест меню"
-    reply:
-      keyboard: "main_menu"
+    keyboard: "main_menu"
   - name: "menu2"
     description: "тест меню"
-    reply:
-      keyboard: "second_menu"
-  - name: "rmenu"
-    description: "reply меню"
-    reply:
-      keyboard: "reply_menu"
+    script: "keyboard_second_menu.lua"
+  - name: "sosal"
+    description: "тест меню"
+    reply: "sosal"
 
 #создание клавиатур
 keyboards:
   - name: "main_menu"
-    type: "inline" # или "reply"
     message: "main"
     buttons:
       - row:
@@ -39,19 +35,6 @@ keyboards:
           - name: "btn4"
             text: "Кнопка 4"
             data: "customData btn4"
-  - name: "second_menu"
-    type: "inline" # или "reply"
-    script: "keyboard_second_menu.lua"
-  - name: "reply_menu"
-    type: "reply" # или "reply"
-    message: "reply"
-    buttons:
-      - row:
-          - text: "Кнопка 1"
-          - text: "Кнопка 2"
-      - row:
-          - text: "Кнопка 3"
-          - text: "Кнопка 4"
 
 
 #обработка последовательных вопросов к пользователю
