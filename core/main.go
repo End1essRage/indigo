@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"path"
 	"syscall"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
@@ -64,8 +65,9 @@ func main() {
 
 	//обертка над тг ботом
 	bot := NewBot(tBot)
+	cache := NewInMemoryCache(5 * time.Minute)
 
-	le := NewLuaEngine(bot)
+	le := NewLuaEngine(bot, cache)
 
 	handler := NewHandler(le, bot, config)
 
@@ -89,6 +91,7 @@ func main() {
 	<-quit
 
 	tBot.StopReceivingUpdates()
+	cache.Stop()
 	handler.Stop()
 
 	logrus.Info("Server stopped")

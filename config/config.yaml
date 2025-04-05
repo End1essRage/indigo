@@ -27,11 +27,11 @@ keyboards:
           - name: "btn2"
             text: "Кнопка 2"
             data: "customData btn2"
-            script: "btn1_handler.lua"
+            script: "btn2_handler.lua"
       - row:
           - name: "btn3"
             text: "Кнопка 3"
-            script: "btn1_handler.lua"
+            script: "btn3_handler.lua"
           - name: "btn4"
             text: "Кнопка 4"
             data: "customData btn4"

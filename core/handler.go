@@ -53,7 +53,7 @@ func (h *Handler) HandleUpdate(update *tgbotapi.Update) {
 				logrus.Errorf("Error executing script: %v", err)
 			}
 		} else {
-			h.bot.SendMessage(lCtx.ChatId, fmt.Sprintf("no script custom data is %s", lCtx.CbData.Data))
+			h.bot.SendMessage(lCtx.ChatId, fmt.Sprintf("no script, custom data is %s", lCtx.CbData.Data))
 		}
 
 		return
@@ -107,6 +107,7 @@ func (h *Handler) handleCommand(upd *tgbotapi.Update, cmd *Command) {
 		if err := h.le.ExecuteScript(scriptPath, FromTgUpdateToLuaContext(upd)); err != nil {
 			logrus.Errorf("Error executing script: %v", err)
 		}
+		logrus.Info("скрипт выполнен")
 	}
 
 	//обработка сообщения Reply

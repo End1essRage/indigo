@@ -10,7 +10,8 @@ import (
 
 // Lua engine wrapper
 type LuaEngine struct {
-	bot Bot
+	bot   Bot
+	cache Cache
 }
 
 // интерфейс описывает какие ручки торчат в lua
@@ -19,8 +20,15 @@ type Bot interface {
 	Send(msg tgbotapi.MessageConfig) error
 }
 
-func NewLuaEngine(b Bot) *LuaEngine {
-	return &LuaEngine{bot: b}
+// работа с кэшом
+type Cache interface {
+	GetString(key string) string
+	SetString(key string, val string)
+	Exist(key string) bool
+}
+
+func NewLuaEngine(b Bot, c Cache) *LuaEngine {
+	return &LuaEngine{bot: b, cache: c}
 }
 
 // можно через паттерн билдер сделать возможность подключения луа/го модулей к своему боту, чтоб не тянуть кучу функционала
@@ -31,6 +39,25 @@ func (le *LuaEngine) RegisterFunctions(L *lua.LState) {
 	L.SetGlobal("log", L.NewFunction(func(L *lua.LState) int {
 		msg := L.ToString(1)
 		logrus.Warnf("[LUA] %s", msg)
+		return 0
+	}))
+
+	// Кэш
+	L.SetGlobal("cache_get", L.NewFunction(func(L *lua.LState) int {
+		key := L.CheckString(1)
+		value := le.cache.GetString(key)
+		if value == "" {
+			L.Push(lua.LNil)
+		} else {
+			L.Push(lua.LString(value))
+		}
+		return 1
+	}))
+
+	L.SetGlobal("cache_set", L.NewFunction(func(L *lua.LState) int {
+		key := L.CheckString(1)
+		value := L.CheckString(2)
+		le.cache.SetString(key, value)
 		return 0
 	}))
 
