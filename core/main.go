@@ -88,5 +88,8 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
+	tBot.StopReceivingUpdates()
+	handler.Stop()
+
 	logrus.Info("Server stopped")
 }
