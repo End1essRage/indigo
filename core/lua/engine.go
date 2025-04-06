@@ -1,12 +1,26 @@
-package main
+package lua
 
 import (
 	"fmt"
 
+	b "github.com/end1essrage/indigo-core/bot"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/sirupsen/logrus"
 	lua "github.com/yuin/gopher-lua"
 )
+
+type LuaContext struct {
+	MessageText string
+	CbData      LuaCbData
+	ChatId      int64
+	FromId      int64
+	FromName    string
+}
+
+type LuaCbData struct {
+	Script string
+	Data   string
+}
 
 // Lua engine wrapper
 type LuaEngine struct {
@@ -24,7 +38,6 @@ type Bot interface {
 type Cache interface {
 	GetString(key string) string
 	SetString(key string, val string)
-	Exist(key string) bool
 }
 
 func NewLuaEngine(b Bot, c Cache) *LuaEngine {
@@ -83,12 +96,12 @@ func (le *LuaEngine) RegisterFunctions(L *lua.LState) {
 		meshTable := L.CheckTable(3) // Принимаем таблицу вместо JSON строки
 
 		// Конвертируем Lua таблицу в структуру Go
-		mesh := FromLuaTableToMeshInlineKeyboard(L, meshTable)
+		mesh := fromLuaTableToMeshInlineKeyboard(meshTable)
 
 		// Создаем и отправляем сообщение
 		msg := tgbotapi.NewMessage(chatID, text)
 		msg.ReplyMarkup = tgbotapi.InlineKeyboardMarkup{
-			InlineKeyboard: createInlineKeyboard(mesh),
+			InlineKeyboard: b.CreateInlineKeyboard(mesh),
 		}
 
 		if err := le.bot.Send(msg); err != nil {
@@ -127,4 +140,42 @@ func (le *LuaEngine) ExecuteScript(scriptPath string, lContext LuaContext) error
 	}
 
 	return nil
+}
+
+// функция для конвертации Lua таблицы в MeshKeyboard
+func fromLuaTableToMeshInlineKeyboard(lt *lua.LTable) b.MeshInlineKeyboard {
+	var mesh b.MeshInlineKeyboard
+
+	lt.ForEach(func(key lua.LValue, value lua.LValue) {
+		if key.String() == "Rows" {
+			if rows, ok := value.(*lua.LTable); ok {
+				rows.ForEach(func(rowKey lua.LValue, rowValue lua.LValue) {
+					if row, ok := rowValue.(*lua.LTable); ok {
+						var meshRow []b.MeshInlineButton
+						row.ForEach(func(btnKey lua.LValue, btnValue lua.LValue) {
+							if btn, ok := btnValue.(*lua.LTable); ok {
+								var meshBtn b.MeshInlineButton
+								btn.ForEach(func(fieldKey lua.LValue, fieldValue lua.LValue) {
+									switch fieldKey.String() {
+									case "Text":
+										meshBtn.Text = fieldValue.String()
+									case "Script":
+										meshBtn.Script = fieldValue.String()
+									case "Data":
+										meshBtn.CustomCbData = fieldValue.String()
+									case "Name":
+										meshBtn.Name = fieldValue.String()
+									}
+								})
+								meshRow = append(meshRow, meshBtn)
+							}
+						})
+						mesh.Rows = append(mesh.Rows, meshRow)
+					}
+				})
+			}
+		}
+	})
+
+	return mesh
 }

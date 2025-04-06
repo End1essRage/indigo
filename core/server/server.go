@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"fmt"
@@ -6,25 +6,29 @@ import (
 	"sync"
 	"time"
 
+	b "github.com/end1essrage/indigo-core/bot"
+	c "github.com/end1essrage/indigo-core/config"
+	l "github.com/end1essrage/indigo-core/lua"
+	m "github.com/end1essrage/indigo-core/mapper"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/sirupsen/logrus"
 )
 
-type Handler struct {
-	le       *LuaEngine
-	bot      *TgBot
-	config   *Config
+type Server struct {
+	le       *l.LuaEngine
+	bot      *b.TgBot
+	config   *c.Config
 	stopping bool
 	handling bool
 	stopped  chan struct{}
 	mu       sync.Mutex
 }
 
-func NewHandler(le *LuaEngine, bot *TgBot, config *Config) *Handler {
-	return &Handler{le: le, bot: bot, config: config, stopped: make(chan struct{})}
+func NewServer(le *l.LuaEngine, bot *b.TgBot, config *c.Config) *Server {
+	return &Server{le: le, bot: bot, config: config, stopped: make(chan struct{})}
 }
 
-func (h *Handler) HandleUpdate(update *tgbotapi.Update) {
+func (h *Server) HandleUpdate(update *tgbotapi.Update) {
 	h.mu.Lock()
 	if h.stopping {
 		h.mu.Unlock()
@@ -42,7 +46,7 @@ func (h *Handler) HandleUpdate(update *tgbotapi.Update) {
 
 	//обработка кнопок
 	if update.CallbackQuery != nil {
-		lCtx := FromCallbackQueryToLuaContext(update.CallbackQuery)
+		lCtx := m.FromCallbackQueryToLuaContext(update.CallbackQuery)
 
 		//удаляем сообщение с клавиатурой
 		h.bot.DeleteMsg(lCtx.ChatId, update.CallbackQuery.Message.MessageID)
@@ -89,7 +93,7 @@ func (h *Handler) HandleUpdate(update *tgbotapi.Update) {
 	h.handleCommand(update, cmd)
 }
 
-func (h *Handler) Stop() {
+func (h *Server) Stop() {
 	h.mu.Lock()
 	h.stopping = true
 	handling := h.handling
@@ -103,11 +107,11 @@ func (h *Handler) Stop() {
 	}
 }
 
-func (h *Handler) handleCommand(upd *tgbotapi.Update, cmd *Command) {
+func (h *Server) handleCommand(upd *tgbotapi.Update, cmd *c.Command) {
 	//запуск скрипта
 	if cmd.Script != nil && *cmd.Script != "" {
 		scriptPath := fmt.Sprintf("scripts/%s", *cmd.Script)
-		if err := h.le.ExecuteScript(scriptPath, FromTgUpdateToLuaContext(upd)); err != nil {
+		if err := h.le.ExecuteScript(scriptPath, m.FromTgUpdateToLuaContext(upd)); err != nil {
 			logrus.Errorf("Error executing script: %v", err)
 		}
 		logrus.Info("скрипт выполнен")
@@ -115,7 +119,7 @@ func (h *Handler) handleCommand(upd *tgbotapi.Update, cmd *Command) {
 
 	//обработка сообщения Reply
 	if cmd.Reply != nil && *cmd.Reply != "" {
-		h.le.bot.SendMessage(upd.Message.Chat.ID, *cmd.Reply)
+		h.bot.SendMessage(upd.Message.Chat.ID, *cmd.Reply)
 	}
 
 	// обработка клавиатуры
@@ -130,25 +134,25 @@ func (h *Handler) handleCommand(upd *tgbotapi.Update, cmd *Command) {
 		// обрабатываем клавиатуру из конфига
 		if kb.Script != nil && *kb.Script != "" {
 			scriptPath := fmt.Sprintf("scripts/%s", *kb.Script)
-			if err := h.le.ExecuteScript(scriptPath, FromTgUpdateToLuaContext(upd)); err != nil {
+			if err := h.le.ExecuteScript(scriptPath, m.FromTgUpdateToLuaContext(upd)); err != nil {
 				logrus.Errorf("Error executing script: %v", err)
 			}
 		} else {
 			rMessage := *kb.Message
-			kbMesh := parseInlineKeyboard(kb)
+			kbMesh := b.ParseInlineKeyboard(kb)
 
-			keyboard := createInlineKeyboard(kbMesh)
+			keyboard := b.CreateInlineKeyboard(kbMesh)
 
 			replyMessage := tgbotapi.NewMessage(upd.Message.Chat.ID, rMessage)
 			replyMessage.ReplyMarkup = tgbotapi.InlineKeyboardMarkup{InlineKeyboard: keyboard}
 
-			h.le.bot.Send(replyMessage)
+			h.bot.Send(replyMessage)
 		}
 	}
 
 }
 
-func formatHelpMessage(cmds map[string]*Command) string {
+func formatHelpMessage(cmds map[string]*c.Command) string {
 	sb := strings.Builder{}
 	for _, c := range cmds {
 		sb.WriteString(fmt.Sprintf("%s - %s \n", c.Name, c.Description))

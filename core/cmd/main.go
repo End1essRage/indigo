@@ -8,6 +8,11 @@ import (
 	"syscall"
 	"time"
 
+	b "github.com/end1essrage/indigo-core/bot"
+	cache "github.com/end1essrage/indigo-core/cache"
+	c "github.com/end1essrage/indigo-core/config"
+	l "github.com/end1essrage/indigo-core/lua"
+	s "github.com/end1essrage/indigo-core/server"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
@@ -43,7 +48,7 @@ func main() {
 		panic(err)
 	}
 	//загружаем конфиг
-	config, err := LoadConfig(path.Join(curDir, ConfigPath))
+	config, err := c.LoadConfig(path.Join(curDir, ConfigPath))
 	if err != nil {
 		log.Fatalf("Error loading config: %v", err)
 	}
@@ -64,12 +69,12 @@ func main() {
 	logrus.Infof("Authorized on account %s", tBot.Self.UserName)
 
 	//обертка над тг ботом
-	bot := NewBot(tBot)
-	cache := NewInMemoryCache(5 * time.Minute)
+	bot := b.NewBot(tBot)
+	cache := cache.NewInMemoryCache(5 * time.Minute)
 
-	le := NewLuaEngine(bot, cache)
+	le := l.NewLuaEngine(bot, cache)
 
-	handler := NewHandler(le, bot, config)
+	server := s.NewServer(le, bot, config)
 
 	//получаем обновления
 	u := tgbotapi.NewUpdate(0)
@@ -81,7 +86,7 @@ func main() {
 	// обработка обновлений
 	go func() {
 		for update := range updates {
-			handler.HandleUpdate(&update)
+			server.HandleUpdate(&update)
 		}
 	}()
 
@@ -92,7 +97,7 @@ func main() {
 
 	tBot.StopReceivingUpdates()
 	cache.Stop()
-	handler.Stop()
+	server.Stop()
 
 	logrus.Info("Server stopped")
 }

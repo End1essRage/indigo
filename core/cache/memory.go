@@ -1,4 +1,4 @@
-package main
+package cache
 
 import (
 	"sync"
@@ -36,7 +36,7 @@ func (c *InMemoryCache) cleanupWorker() {
 	for {
 		select {
 		case <-ticker.C:
-			c.Cleanup()
+			c.cleanup()
 		case <-c.stopChan:
 			return
 		}
@@ -68,15 +68,7 @@ func (c *InMemoryCache) SetString(key string, val string) {
 	}
 }
 
-func (c *InMemoryCache) Exist(key string) bool {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	entry, exists := c.data[key]
-	return exists && time.Now().Before(entry.expiresAt)
-}
-
-func (c *InMemoryCache) Cleanup() {
+func (c *InMemoryCache) cleanup() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
