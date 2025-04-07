@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/end1essrage/indigo-core/api"
 	b "github.com/end1essrage/indigo-core/bot"
 	c "github.com/end1essrage/indigo-core/config"
 	l "github.com/end1essrage/indigo-core/lua"
@@ -13,6 +14,10 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/sirupsen/logrus"
 )
+
+//работа с хранилищем
+
+//http - эндпоинты
 
 type Server struct {
 	le       *l.LuaEngine
@@ -22,10 +27,30 @@ type Server struct {
 	handling bool
 	stopped  chan struct{}
 	mu       sync.Mutex
+	api      *api.API
 }
 
 func NewServer(le *l.LuaEngine, bot *b.TgBot, config *c.Config) *Server {
 	return &Server{le: le, bot: bot, config: config, stopped: make(chan struct{})}
+
+}
+
+func (s *Server) Start(updates tgbotapi.UpdatesChannel) {
+	go func() {
+		for update := range updates {
+			s.HandleUpdate(&update)
+		}
+	}()
+
+	if s.config.HTTP != nil {
+		s.api = api.New(s.bot, s.le, s.config)
+		go func() {
+			if err := s.api.Start(); err != nil {
+				panic(err)
+			}
+		}()
+	}
+
 }
 
 func (h *Server) HandleUpdate(update *tgbotapi.Update) {
@@ -99,12 +124,17 @@ func (h *Server) Stop() {
 	handling := h.handling
 	h.mu.Unlock()
 
+	if h.api != nil {
+		h.api.Stop()
+	}
+
 	if handling {
 		select {
 		case <-h.stopped:
 		case <-time.After(5 * time.Second): // Таймаут на случай блокировки
 		}
 	}
+
 }
 
 func (h *Server) handleCommand(upd *tgbotapi.Update, cmd *c.Command) {

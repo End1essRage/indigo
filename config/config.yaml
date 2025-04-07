@@ -1,6 +1,34 @@
 bot:
   mode: "polling"
 
+http:
+  address: ":8080"
+  endpoints:
+    - path: "/test-get"
+      method: "GET"
+      scheme: "scheme_null"
+      script: "api_test.lua"
+    - path: "/test"
+      method: "POST"
+      scheme: "scheme_1"
+      script: "api_test.lua"
+  schemes:
+  - name: "scheme_null"
+  - name: "scheme_1"
+    fields:
+      - name: "user_id"
+        type: "string"
+        required: true
+        source: "body"
+      - name: "message"
+        type: "string"
+        required: true
+        source: "body"
+      - name: "X-Request-Id"
+        type: "string"
+        required: false
+        source: "header"
+  
 commands:
   - name: "start"
     description: "Приветствие"

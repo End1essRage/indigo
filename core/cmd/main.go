@@ -70,10 +70,14 @@ func main() {
 
 	//обертка над тг ботом
 	bot := b.NewBot(tBot)
+
+	//кэш
 	cache := cache.NewInMemoryCache(5 * time.Minute)
 
+	//луа движок
 	le := l.NewLuaEngine(bot, cache)
 
+	//обрабатывающий сервер
 	server := s.NewServer(le, bot, config)
 
 	//получаем обновления
@@ -84,11 +88,7 @@ func main() {
 
 	logrus.Info("start processing")
 	// обработка обновлений
-	go func() {
-		for update := range updates {
-			server.HandleUpdate(&update)
-		}
-	}()
+	server.Start(updates)
 
 	// Graceful shutdown
 	quit := make(chan os.Signal, 1)
