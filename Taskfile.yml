@@ -2,10 +2,63 @@ version: '3'
 
 vars:
   BINARY_NAME: "indigo.exe"
+  IMAGE_NAME: "indigo"
+  VERSION: "latest"
+  DOCKER_REGISTRY: "end1essrage/"
+  CONFIG_DIR: "${PWD}/config"
+  SCRIPTS_DIR: "${PWD}/scripts"
+  DATA_DIR: "${PWD}/data"
+  BOT_TOKEN: ""
+  PORT_BINDING: 80:8080
 
 tasks:
-  build_and_run:
+  local:
     desc: Build and run the binary
     cmds:
       - cd core/cmd && go build -o ../../{{.BINARY_NAME}}
       - ./{{.BINARY_NAME}}
+
+  build:
+    desc: Build Docker image with multiple tags
+    cmds:
+      - docker build -t {{.DOCKER_REGISTRY}}{{.IMAGE_NAME}}:{{.VERSION}} -t {{.DOCKER_REGISTRY}}{{.IMAGE_NAME}}:latest .
+    sources:
+      - core/**
+      - cmd/**
+      - Dockerfile
+
+  push:
+    desc: Push both tags to registry
+    cmds:
+      - docker push {{.DOCKER_REGISTRY}}{{.IMAGE_NAME}}:{{.VERSION}}
+      - docker push {{.DOCKER_REGISTRY}}{{.IMAGE_NAME}}:latest
+
+  remove:
+    desc: Remove existing container
+    cmds:
+      - docker rm -f {{.IMAGE_NAME}} || true
+
+  run:
+    desc: Run container from the built image
+    deps: [remove]
+    cmds:
+      - >-
+        docker run -d --name {{.IMAGE_NAME}}
+        -v {{.CONFIG_DIR}}:/app/config
+        -v {{.SCRIPTS_DIR}}:/app/scripts
+        -v {{.DATA_DIR}}:/app/data
+        -e CONFIG_PATH=/config/config.yaml
+        -e SCRIPTS_PATH=/app/scripts
+        -e BOT_TOKEN={{.BOT_TOKEN}}
+        -p {{.PORT_BINDING}}
+        {{.DOCKER_REGISTRY}}{{.IMAGE_NAME}}:{{.VERSION}}
+
+  all:
+    desc: Build, tag and push image
+    deps: [build, push]
+
+  clean:
+    desc: Remove built containers and images
+    cmds:
+      - docker rm -f {{.IMAGE_NAME}} {{.IMAGE_NAME}}-latest || true
+      - docker rmi {{.DOCKER_REGISTRY}}{{.IMAGE_NAME}}:{{.VERSION}} {{.DOCKER_REGISTRY}}{{.IMAGE_NAME}}:latest || true
