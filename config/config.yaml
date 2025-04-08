@@ -1,6 +1,14 @@
 bot:
   mode: "polling"
 
+storage:
+  type: "file" # или "mongo"
+  file:
+    path: "./data"
+  mongo:
+    uri: "mongodb://localhost:27017"
+    db: "appdb"
+
 http:
   address: ":8080"
   endpoints:
@@ -55,7 +63,7 @@ keyboards:
           - name: "btn2"
             text: "Кнопка 2"
             data: "customData btn2"
-            script: "btn2_handler.lua"
+            script: "data_save_test.lua"
       - row:
           - name: "btn3"
             text: "Кнопка 3"

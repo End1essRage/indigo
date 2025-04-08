@@ -37,10 +37,22 @@ type Keyboard struct {
 }
 
 type YamlConfig struct {
-	Bot       BotConfig   `yaml:"bot"`
-	HTTP      *HTTPConfig `yaml:"http,omitempty"`
-	Commands  []Command   `yaml:"commands"`
-	Keyboards []Keyboard  `yaml:"keyboards,omitempty"`
+	Bot       BotConfig     `yaml:"bot"`
+	Storage   StorageConfig `yaml:"storage"`
+	HTTP      *HTTPConfig   `yaml:"http,omitempty"`
+	Commands  []Command     `yaml:"commands"`
+	Keyboards []Keyboard    `yaml:"keyboards,omitempty"`
+}
+
+type StorageConfig struct {
+	Type string `yaml:"type"`
+	File *struct {
+		Path string `yaml:"path"`
+	} `yaml:"file,omitempty"`
+	Mongo *struct {
+		Uri string `yaml:"uri"`
+		Db  string `yaml:"db"`
+	} `yaml:"mongo,omitempty"`
 }
 
 type HTTPConfig struct {
@@ -71,6 +83,7 @@ type Field struct {
 type Config struct {
 	Bot       BotConfig
 	HTTP      *HTTPConfig
+	Storage   StorageConfig
 	Commands  map[string]*Command
 	Keyboards map[string]*Keyboard
 }
@@ -90,6 +103,7 @@ func LoadConfig(path string) (*Config, error) {
 	var config Config
 	config.Bot = yConfig.Bot
 	config.HTTP = yConfig.HTTP
+	config.Storage = yConfig.Storage
 
 	//fill commands
 	config.Commands = make(map[string]*Command)
