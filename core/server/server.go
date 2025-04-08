@@ -15,24 +15,34 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-//работа с хранилищем
-
-//http - эндпоинты
-
-type Server struct {
-	le       *l.LuaEngine
-	bot      *b.TgBot
-	config   *c.Config
-	stopping bool
-	handling bool
-	stopped  chan struct{}
-	mu       sync.Mutex
-	api      *api.API
+type Cache interface {
+	GetString(key string) string
+	SetString(key string, val string)
+	Exists(key string) bool
 }
 
-func NewServer(le *l.LuaEngine, bot *b.TgBot, config *c.Config) *Server {
-	return &Server{le: le, bot: bot, config: config, stopped: make(chan struct{})}
+type Server struct {
+	le         *l.LuaEngine
+	bot        *b.TgBot
+	config     *c.Config
+	cache      Cache
+	formWorker *FormWorker
+	stopping   bool
+	handling   bool
+	stopped    chan struct{}
+	mu         sync.Mutex
+	api        *api.API
+}
 
+func NewServer(le *l.LuaEngine, bot *b.TgBot, config *c.Config, cache Cache) *Server {
+	return &Server{
+		le:         le,
+		bot:        bot,
+		config:     config,
+		cache:      cache,
+		formWorker: NewFormWorker(bot, cache, config, le),
+		stopped:    make(chan struct{}),
+	}
 }
 
 func (s *Server) Start(updates tgbotapi.UpdatesChannel) {
@@ -46,146 +56,116 @@ func (s *Server) Start(updates tgbotapi.UpdatesChannel) {
 		s.api = api.New(s.bot, s.le, s.config)
 		go func() {
 			if err := s.api.Start(); err != nil {
-				panic(err)
+				logrus.Fatalf("Failed to start API: %v", err)
 			}
 		}()
 	}
-
 }
 
-func (h *Server) HandleUpdate(update *tgbotapi.Update) {
-	h.mu.Lock()
-	if h.stopping {
-		h.mu.Unlock()
-		h.stopped <- struct{}{}
+func (s *Server) HandleUpdate(update *tgbotapi.Update) {
+	s.mu.Lock()
+	if s.stopping {
+		s.mu.Unlock()
+		s.stopped <- struct{}{}
 		return
 	}
-	h.handling = true
-	h.mu.Unlock()
+	s.handling = true
+	s.mu.Unlock()
 
 	defer func() {
-		h.mu.Lock()
-		h.handling = false
-		h.mu.Unlock()
+		s.mu.Lock()
+		s.handling = false
+		s.mu.Unlock()
 	}()
 
-	//обработка кнопок
+	// Handle forms first
+	if s.formWorker.HasActiveForm(update) {
+		s.formWorker.HandleInput(update)
+		return
+	}
+
+	// Handle callback queries
 	if update.CallbackQuery != nil {
-		lCtx := m.FromCallbackQueryToLuaContext(update.CallbackQuery)
-
-		//удаляем сообщение с клавиатурой
-		h.bot.DeleteMsg(lCtx.ChatId, update.CallbackQuery.Message.MessageID)
-
-		logrus.Infof("cbdata script is %s", lCtx.CbData.Script)
-		logrus.Infof("cbdata data is %s", lCtx.CbData.Data)
-
-		if lCtx.CbData.Script != "" {
-			scriptPath := fmt.Sprintf("scripts/%s", lCtx.CbData.Script)
-			if err := h.le.ExecuteScript(scriptPath, lCtx); err != nil {
-				logrus.Errorf("Error executing script: %v", err)
-			}
-		} else {
-			h.bot.SendMessage(lCtx.ChatId, fmt.Sprintf("no script, custom data is %s", lCtx.CbData.Data))
-		}
-
+		s.handleCallbackQuery(update.CallbackQuery)
 		return
 	}
 
-	if update.Message == nil {
-		return
+	// Handle commands
+	if update.Message != nil && update.Message.IsCommand() {
+		s.handleCommand(update)
 	}
-
-	//отбрасываем все кроме команд
-	if !update.Message.IsCommand() {
-		return
-	}
-
-	//TODO возможность перезаписать через yml
-	//обрабатываем help
-	if update.Message.Command() == "help" {
-		h.bot.SendMessage(update.Message.Chat.ID, formatHelpMessage(h.config.Commands))
-		return
-	}
-
-	cmd := h.config.Commands[update.Message.Command()]
-	if cmd == nil {
-		logrus.Error("no such command")
-		h.bot.SendMessage(update.Message.Chat.ID, "не распознана команда "+update.Message.Command())
-		return
-	}
-
-	//обрабатываем команду
-	h.handleCommand(update, cmd)
 }
 
-func (h *Server) Stop() {
-	h.mu.Lock()
-	h.stopping = true
-	handling := h.handling
-	h.mu.Unlock()
+func (s *Server) Stop() {
+	s.mu.Lock()
+	s.stopping = true
+	handling := s.handling
+	s.mu.Unlock()
 
-	if h.api != nil {
-		h.api.Stop()
+	if s.api != nil {
+		s.api.Stop()
 	}
 
 	if handling {
 		select {
-		case <-h.stopped:
-		case <-time.After(5 * time.Second): // Таймаут на случай блокировки
+		case <-s.stopped:
+		case <-time.After(5 * time.Second):
 		}
 	}
-
 }
 
-func (h *Server) handleCommand(upd *tgbotapi.Update, cmd *c.Command) {
-	//запуск скрипта
+func (s *Server) handleCallbackQuery(query *tgbotapi.CallbackQuery) {
+	lCtx := m.FromCallbackQueryToLuaContext(query)
+	s.bot.DeleteMsg(lCtx.ChatId, query.Message.MessageID)
+
+	if lCtx.CbData.Script != "" {
+		scriptPath := fmt.Sprintf("scripts/%s", lCtx.CbData.Script)
+		if err := s.le.ExecuteScript(scriptPath, lCtx); err != nil {
+			logrus.Errorf("Callback script error: %v", err)
+		}
+	}
+}
+
+func (s *Server) handleCommand(upd *tgbotapi.Update) {
+	// Handle help command
+	if upd.Message.Command() == "help" {
+		s.bot.SendMessage(upd.Message.Chat.ID, s.formatHelpMessage())
+		return
+	}
+
+	cmd := s.config.Commands[upd.Message.Command()]
+	if cmd == nil {
+		s.bot.SendMessage(upd.Message.Chat.ID, "Unknown command: "+upd.Message.Command())
+		return
+	}
+
+	// Execute command script
 	if cmd.Script != nil && *cmd.Script != "" {
-		scriptPath := fmt.Sprintf("scripts/%s", *cmd.Script)
-		if err := h.le.ExecuteScript(scriptPath, m.FromTgUpdateToLuaContext(upd)); err != nil {
-			logrus.Errorf("Error executing script: %v", err)
+		ctx := m.FromTgUpdateToLuaContext(upd)
+		if err := s.le.ExecuteScript("scripts/"+*cmd.Script, ctx); err != nil {
+			logrus.Errorf("Command script error: %v", err)
 		}
-		logrus.Info("скрипт выполнен")
 	}
 
-	//обработка сообщения Reply
+	// Handle form start
+	if cmd.Form != nil && *cmd.Form != "" {
+		if err := s.formWorker.StartForm(*cmd.Form, upd.Message.From.ID, upd); err != nil {
+			logrus.Errorf("Form start error: %v", err)
+			s.bot.SendMessage(upd.Message.Chat.ID, "Failed to start form: "+err.Error())
+		}
+	}
+
+	// Send reply if specified
 	if cmd.Reply != nil && *cmd.Reply != "" {
-		h.bot.SendMessage(upd.Message.Chat.ID, *cmd.Reply)
+		s.bot.SendMessage(upd.Message.Chat.ID, *cmd.Reply)
 	}
-
-	// обработка клавиатуры
-	if cmd.Keyboard != nil && *cmd.Keyboard != "" {
-		// ищем по имени в map
-		kb := h.config.Keyboards[*cmd.Keyboard]
-		if kb == nil {
-			logrus.Errorf("не удалось найти клавиутуру с именем : %s", *cmd.Keyboard)
-			return
-		}
-
-		// обрабатываем клавиатуру из конфига
-		if kb.Script != nil && *kb.Script != "" {
-			scriptPath := fmt.Sprintf("scripts/%s", *kb.Script)
-			if err := h.le.ExecuteScript(scriptPath, m.FromTgUpdateToLuaContext(upd)); err != nil {
-				logrus.Errorf("Error executing script: %v", err)
-			}
-		} else {
-			rMessage := *kb.Message
-			kbMesh := b.ParseInlineKeyboard(kb)
-
-			keyboard := b.CreateInlineKeyboard(kbMesh)
-
-			replyMessage := tgbotapi.NewMessage(upd.Message.Chat.ID, rMessage)
-			replyMessage.ReplyMarkup = tgbotapi.InlineKeyboardMarkup{InlineKeyboard: keyboard}
-
-			h.bot.Send(replyMessage)
-		}
-	}
-
 }
 
-func formatHelpMessage(cmds map[string]*c.Command) string {
+func (s *Server) formatHelpMessage() string {
 	sb := strings.Builder{}
-	for _, c := range cmds {
-		sb.WriteString(fmt.Sprintf("%s - %s \n", c.Name, c.Description))
+	sb.WriteString("Available commands:\n")
+	for _, cmd := range s.config.Commands {
+		sb.WriteString(fmt.Sprintf("/%s - %s\n", cmd.Name, cmd.Description))
 	}
 	return sb.String()
 }

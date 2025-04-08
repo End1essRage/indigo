@@ -89,7 +89,7 @@ func main() {
 	le := l.NewLuaEngine(bot, cache, client, storage)
 
 	//обрабатывающий сервер
-	server := s.NewServer(le, bot, config)
+	server := s.NewServer(le, bot, config, cache)
 
 	//получаем обновления
 	u := tgbotapi.NewUpdate(0)

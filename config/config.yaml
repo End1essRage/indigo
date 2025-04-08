@@ -50,6 +50,29 @@ commands:
   - name: "sosal"
     description: "тест меню"
     reply: "sosal"
+  - name: "register"
+    form: "user_registration"
+
+forms:
+  - name: "user_registration"
+    description: "Регистрация пользователя"
+    stages:
+      - field: "user_name"
+        message: "Введите ваше имя:"
+        validation:
+          type: "string"
+          min_length: 2
+      - field: "user_age"
+        message: "Выберите возрастную группу:"
+        keyboard: "age_groups"
+      - field: "user_email"
+        message: "Введите ваш email:"
+        validation:
+          type: "email"
+      - field: "newsletter"
+        message: "Подписаться на рассылку?"
+        keyboard: "yes_no"
+    script: "user_regestration.lua"
 
 #создание клавиатур
 keyboards:
@@ -71,32 +94,23 @@ keyboards:
           - name: "btn4"
             text: "Кнопка 4"
             data: "customData btn4"
+  - name: "age_groups"
+    message: "Выберите возраст:"
+    buttons:
+      - row:
+          - name: "18-25"
+            data: "18-25"
+            text: "18-25 лет"
+          - name: "26-35"
+            data: "26-35"
+            text: "26-35 лет"
+  - name: "yes_no"
+    message: "Подтвердите выбор:"
+    buttons:
+      - row:
+          - name: "yes"
+            text: "Да"
+          - name: "no"
+            text: "Нет"
 
-
-#обработка последовательных вопросов к пользователю
-forms:
-  - name: "form1"
-    stages:
-      - name: "first stage"
-        output: "введите имя" #msg or script/keyboard
-        input: "user_name"
-      - name: "btn stages"
-        output: 
-          keyboard: "some_keyboard"
-    output:
-      - val: "user_name"
-        type: string
-      - val: "user_old"
-        type: int
-
-#входные и выходные интеграции
-integrations:
-  in:
-    - name: ""
-      data: 
-        - val: ""
-          type: 
-      handler: ""
-  out:
-
-  
+    

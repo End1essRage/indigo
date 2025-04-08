@@ -68,6 +68,15 @@ func (c *InMemoryCache) SetString(key string, val string) {
 	}
 }
 
+func (c *InMemoryCache) Exists(key string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	_, exists := c.data[key]
+
+	return exists
+}
+
 func (c *InMemoryCache) cleanup() {
 	c.mu.Lock()
 	defer c.mu.Unlock()

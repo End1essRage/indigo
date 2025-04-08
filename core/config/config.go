@@ -16,6 +16,7 @@ type Command struct {
 	Script      *string `yaml:"script,omitempty"`
 	Reply       *string `yaml:"reply,omitempty"`
 	Keyboard    *string `yaml:"keyboard,omitempty"`
+	Form        *string `yaml:"form,omitempty"`
 }
 
 type Button struct {
@@ -42,6 +43,22 @@ type YamlConfig struct {
 	HTTP      *HTTPConfig   `yaml:"http,omitempty"`
 	Commands  []Command     `yaml:"commands"`
 	Keyboards []Keyboard    `yaml:"keyboards,omitempty"`
+	Forms     []Form        `yaml:"forms,omitempty"`
+}
+
+type Form struct {
+	Name        string      `yaml:"name"`
+	Description *string     `yaml:"description,omitempty"`
+	Stages      []FormStage `yaml:"stages"`
+	Script      string      `yaml:"script"`
+}
+
+type FormStage struct {
+	Field      string          `yaml:"field"`
+	Message    string          `yaml:"message"`
+	Validation *map[string]any `yaml:"validation,omitempty"`
+	Keyboard   *string         `yaml:"keyboard,omitempty"`
+	Script     *string         `yaml:"script,omitempty"`
 }
 
 type StorageConfig struct {
@@ -86,6 +103,7 @@ type Config struct {
 	Storage   StorageConfig
 	Commands  map[string]*Command
 	Keyboards map[string]*Keyboard
+	Forms     map[string]*Form
 }
 
 // Config loader
@@ -115,6 +133,12 @@ func LoadConfig(path string) (*Config, error) {
 	config.Keyboards = make(map[string]*Keyboard)
 	for _, k := range yConfig.Keyboards {
 		config.Keyboards[k.Name] = &k
+	}
+
+	//fill forms
+	config.Forms = make(map[string]*Form)
+	for _, f := range yConfig.Forms {
+		config.Forms[f.Name] = &f
 	}
 
 	return &config, nil
