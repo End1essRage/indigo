@@ -21,8 +21,9 @@ import (
 )
 
 var (
-	Token      string
-	ConfigPath string
+	Token       string
+	ConfigPath  string
+	ScriptsPath string
 )
 
 func init() {
@@ -41,6 +42,11 @@ func init() {
 	ConfigPath = os.Getenv("CONFIG_PATH")
 	if ConfigPath == "" {
 		logrus.Warn("cant set ConfigPath")
+	}
+
+	ScriptsPath = os.Getenv("SCRIPTS_PATH")
+	if ConfigPath == "" {
+		logrus.Warn("cant set ScriptsPath")
 	}
 }
 
@@ -86,7 +92,7 @@ func main() {
 	}
 
 	//луа движок
-	le := l.NewLuaEngine(bot, cache, client, storage)
+	le := l.NewLuaEngine(bot, cache, client, storage, ScriptsPath)
 
 	//обрабатывающий сервер
 	server := s.NewServer(le, bot, config, cache)

@@ -119,8 +119,7 @@ func (s *Server) handleCallbackQuery(query *tgbotapi.CallbackQuery) {
 	s.bot.DeleteMsg(lCtx.ChatId, query.Message.MessageID)
 
 	if lCtx.CbData.Script != "" {
-		scriptPath := fmt.Sprintf("scripts/%s", lCtx.CbData.Script)
-		if err := s.le.ExecuteScript(scriptPath, lCtx); err != nil {
+		if err := s.le.ExecuteScript(lCtx.CbData.Script, lCtx); err != nil {
 			logrus.Errorf("Callback script error: %v", err)
 		}
 	}
@@ -142,7 +141,7 @@ func (s *Server) handleCommand(upd *tgbotapi.Update) {
 	// Execute command script
 	if cmd.Script != nil && *cmd.Script != "" {
 		ctx := m.FromTgUpdateToLuaContext(upd)
-		if err := s.le.ExecuteScript("scripts/"+*cmd.Script, ctx); err != nil {
+		if err := s.le.ExecuteScript(*cmd.Script, ctx); err != nil {
 			logrus.Errorf("Command script error: %v", err)
 		}
 	}

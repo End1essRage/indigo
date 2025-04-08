@@ -124,7 +124,7 @@ func (fw *FormWorker) sendFormStep(userID int64, stepIndex int, upd *tgbotapi.Up
 	if step.Script != nil && *step.Script != "" {
 		ctx := m.FromTgUpdateToLuaContext(upd)
 		ctx.FormData = fw.collectFormData(userID)
-		if err := fw.le.ExecuteScript("scripts/"+*step.Script, ctx); err != nil {
+		if err := fw.le.ExecuteScript(*step.Script, ctx); err != nil {
 			logrus.Errorf("Form step script error: %v", err)
 		}
 	}
@@ -147,7 +147,7 @@ func (fw *FormWorker) completeForm(userID int64, form *c.Form, upd *tgbotapi.Upd
 		}
 
 		ctx.FormData = data
-		if err := fw.le.ExecuteScript("scripts/"+form.Script, ctx); err != nil {
+		if err := fw.le.ExecuteScript(form.Script, ctx); err != nil {
 			logrus.Errorf("Form completion script error: %v", err)
 		}
 	}

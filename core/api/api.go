@@ -110,8 +110,7 @@ func (a *API) createEndpointHandler(endpoint config.Endpoint, scheme *config.Sch
 		}
 
 		// Выполняем скрипт
-		scriptPath := fmt.Sprintf("scripts/%s", endpoint.Script)
-		if err := a.le.ExecuteScript(scriptPath, ctx); err != nil {
+		if err := a.le.ExecuteScript(endpoint.Script, ctx); err != nil {
 			logrus.Errorf("Error executing script: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return

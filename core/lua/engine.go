@@ -3,6 +3,7 @@ package lua
 import (
 	"fmt"
 	"net/http"
+	"path"
 
 	"github.com/sirupsen/logrus"
 	lua "github.com/yuin/gopher-lua"
@@ -62,14 +63,15 @@ func (b *LuaStateBuilder) Build() *lua.LState {
 
 // Lua engine wrapper
 type LuaEngine struct {
-	bot     Bot
-	cache   Cache
-	http    HttpClient
-	storage Storage
+	bot      Bot
+	cache    Cache
+	http     HttpClient
+	storage  Storage
+	BasePath string
 }
 
-func NewLuaEngine(b Bot, c Cache, h HttpClient, s Storage) *LuaEngine {
-	return &LuaEngine{bot: b, cache: c, http: h, storage: s}
+func NewLuaEngine(b Bot, c Cache, h HttpClient, s Storage, path string) *LuaEngine {
+	return &LuaEngine{bot: b, cache: c, http: h, storage: s, BasePath: path}
 }
 
 func (le *LuaEngine) ExecuteScript(scriptPath string, lContext LuaContext) error {
@@ -117,7 +119,7 @@ func (le *LuaEngine) ExecuteScript(scriptPath string, lContext LuaContext) error
 	L.SetGlobal("ctx", ctx)
 
 	// Выполняем скрипт
-	if err := L.DoFile(scriptPath); err != nil {
+	if err := L.DoFile(path.Join(le.BasePath, scriptPath)); err != nil {
 		return fmt.Errorf("lua error: %v", err)
 	}
 
