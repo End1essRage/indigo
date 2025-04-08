@@ -20,7 +20,6 @@ type Command struct {
 }
 
 type Button struct {
-	Name   string  `yaml:"name"`
 	Text   string  `yaml:"text"`
 	Data   *string `yaml:"data,omitempty"`
 	Script *string `yaml:"script,omitempty"`

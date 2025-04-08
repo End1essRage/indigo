@@ -80,37 +80,32 @@ keyboards:
     message: "main"
     buttons:
       - row:
-          - name: "btn1"
-            text: "Кнопка 1"
+          - text: "Кнопка 1"
             script: "btn1_handler.lua"
-          - name: "btn2"
-            text: "Кнопка 2"
+          - text: "Кнопка 2"
             data: "customData btn2"
             script: "data_save_test.lua"
       - row:
-          - name: "btn3"
-            text: "Кнопка 3"
+          - text: "Кнопка 3"
             script: "btn3_handler.lua"
-          - name: "btn4"
-            text: "Кнопка 4"
+          - text: "Кнопка 4"
             data: "customData btn4"
   - name: "age_groups"
     message: "Выберите возраст:"
     buttons:
       - row:
-          - name: "18-25"
+          - text: "18-25 лет"
             data: "18-25"
-            text: "18-25 лет"
-          - name: "26-35"
+          - text: "26-35 лет"
             data: "26-35"
-            text: "26-35 лет"
+
   - name: "yes_no"
     message: "Подтвердите выбор:"
     buttons:
       - row:
-          - name: "yes"
-            text: "Да"
-          - name: "no"
-            text: "Нет"
+          - text: "да"
+            data: "yes"
+          - text: "нет"
+            data: "no"
 
     

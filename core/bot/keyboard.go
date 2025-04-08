@@ -62,7 +62,7 @@ func ParseInlineKeyboard(kb *c.Keyboard) MeshInlineKeyboard {
 		row := make([]MeshInlineButton, 0)
 		//проходимся по кнопкам внутри Row
 		for _, b := range r.Row {
-			btn := MeshInlineButton{Name: b.Name, Text: b.Text}
+			btn := MeshInlineButton{Text: b.Text}
 			//заполняем CallBackData
 			if b.Script != nil {
 				btn.Script = *b.Script
