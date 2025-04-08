@@ -63,15 +63,16 @@ func (b *LuaStateBuilder) Build() *lua.LState {
 type LuaEngine struct {
 	bot   Bot
 	cache Cache
+	http  HttpClient
 }
 
-func NewLuaEngine(b Bot, c Cache) *LuaEngine {
-	return &LuaEngine{bot: b, cache: c}
+func NewLuaEngine(b Bot, c Cache, h HttpClient) *LuaEngine {
+	return &LuaEngine{bot: b, cache: c, http: h}
 }
 
 func (le *LuaEngine) ExecuteScript(scriptPath string, lContext LuaContext) error {
 	logrus.Infof("ExecuteScript path:%s", scriptPath)
-	L := NewStateBuilder(le).WithModule(&CacheModule{}).WithModule(&BotModule{}).Build()
+	L := NewStateBuilder(le).WithModule(&CacheModule{}).WithModule(&BotModule{}).WithModule(&HttpModule{}).Build()
 	defer L.Close()
 
 	// Прокидываем контекст

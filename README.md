@@ -59,3 +59,26 @@ handle()
 ```bash
 make build_and_run
 ```
+
+
+Пример использования http модуля 
+```lua
+-- Простой GET запрос
+local res, err = http_get("https://api.example.com/data")
+if res then
+    log("Status: " .. res.status)
+    log("Body: " .. res.body)
+end
+
+-- POST запрос с заголовками
+local json_body = [[{"name": "Lua Bot", "version": 1.0}]]
+local headers = {
+    ["Content-Type"] = "application/json",
+    ["X-Custom-Header"] = "lua-request"
+}
+
+local post_res = http_post("https://api.example.com/update", json_body, headers)
+if post_res then
+    cache_set("last_response", post_res.body)
+end
+```

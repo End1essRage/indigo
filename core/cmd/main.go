@@ -10,6 +10,7 @@ import (
 
 	b "github.com/end1essrage/indigo-core/bot"
 	cache "github.com/end1essrage/indigo-core/cache"
+	"github.com/end1essrage/indigo-core/client"
 	c "github.com/end1essrage/indigo-core/config"
 	l "github.com/end1essrage/indigo-core/lua"
 	s "github.com/end1essrage/indigo-core/server"
@@ -74,8 +75,11 @@ func main() {
 	//кэш
 	cache := cache.NewInMemoryCache(5 * time.Minute)
 
+	//http клиент
+	client := client.NewHttpClient()
+
 	//луа движок
-	le := l.NewLuaEngine(bot, cache)
+	le := l.NewLuaEngine(bot, cache, client)
 
 	//обрабатывающий сервер
 	server := s.NewServer(le, bot, config)
