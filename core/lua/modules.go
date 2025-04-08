@@ -23,6 +23,7 @@ type Cache interface {
 type HttpClient interface {
 	Get(url string, headers map[string]string) ([]byte, int, error)
 	Post(url string, body []byte, headers map[string]string) ([]byte, int, error)
+	Fetch(method, url string, body []byte, headers map[string]string) ([]byte, int, error)
 }
 
 type CoreModule struct{}
@@ -57,6 +58,22 @@ func (m *HttpModule) Apply(le *LuaEngine, L *lua.LState) {
 		})
 
 		respBody, status, err := le.http.Post(url, []byte(body), headers)
+		return pushHttpResponse(L, respBody, status, err)
+	}))
+
+	// запрос
+	L.SetGlobal("http_do", L.NewFunction(func(L *lua.LState) int {
+		method := L.CheckString(1)
+		url := L.CheckString(2)
+		body := L.CheckString(3)
+		headersTable := L.OptTable(4, L.NewTable())
+
+		headers := make(map[string]string)
+		headersTable.ForEach(func(k, v lua.LValue) {
+			headers[k.String()] = v.String()
+		})
+
+		respBody, status, err := le.http.Fetch(method, url, []byte(body), headers)
 		return pushHttpResponse(L, respBody, status, err)
 	}))
 }

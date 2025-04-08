@@ -75,3 +75,27 @@ func (h *HttpClient) Post(url string, body []byte, headers map[string]string) ([
 
 	return respBody, resp.StatusCode, nil
 }
+
+func (h *HttpClient) Fetch(method, url string, body []byte, headers map[string]string) ([]byte, int, error) {
+	req, err := http.NewRequest(method, url, bytes.NewReader(body))
+	if err != nil {
+		return nil, 0, err
+	}
+
+	for k, v := range headers {
+		req.Header.Add(k, v)
+	}
+
+	resp, err := h.client.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, maxBodySize))
+	if err != nil {
+		return nil, resp.StatusCode, err
+	}
+
+	return respBody, resp.StatusCode, nil
+}
