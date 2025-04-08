@@ -1,9 +1,10 @@
-package main
+package bot
 
 import (
 	"encoding/json"
 	"fmt"
 
+	c "github.com/end1essrage/indigo-core/config"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/sirupsen/logrus"
 )
@@ -27,11 +28,6 @@ type MeshInlineButton struct {
 	Script       string
 }
 
-type CbData struct {
-	Script *string `json:"script,omitempty"`
-	Data   *string `json:"data,omitempty"`
-}
-
 func (b MeshInlineButton) formatCbData() string {
 	data := CbData{Data: &b.CustomCbData, Script: &b.Script}
 	body, err := json.Marshal(data)
@@ -41,7 +37,7 @@ func (b MeshInlineButton) formatCbData() string {
 	return fmt.Sprintf("%s", body)
 }
 
-func createInlineKeyboard(mesh MeshInlineKeyboard) [][]tgbotapi.InlineKeyboardButton {
+func CreateInlineKeyboard(mesh MeshInlineKeyboard) [][]tgbotapi.InlineKeyboardButton {
 	keyboard := make([][]tgbotapi.InlineKeyboardButton, 0)
 	//проходимся по блоку Buttons по каждому Row
 	for _, r := range mesh.Rows {
@@ -58,7 +54,7 @@ func createInlineKeyboard(mesh MeshInlineKeyboard) [][]tgbotapi.InlineKeyboardBu
 	return keyboard
 }
 
-func parseInlineKeyboard(kb *Keyboard) MeshInlineKeyboard {
+func ParseInlineKeyboard(kb *c.Keyboard) MeshInlineKeyboard {
 	kbMesh := MeshInlineKeyboard{}
 
 	//проходимся по блоку Buttons по каждому Row
@@ -66,7 +62,7 @@ func parseInlineKeyboard(kb *Keyboard) MeshInlineKeyboard {
 		row := make([]MeshInlineButton, 0)
 		//проходимся по кнопкам внутри Row
 		for _, b := range r.Row {
-			btn := MeshInlineButton{Name: b.Name, Text: b.Text}
+			btn := MeshInlineButton{Text: b.Text}
 			//заполняем CallBackData
 			if b.Script != nil {
 				btn.Script = *b.Script

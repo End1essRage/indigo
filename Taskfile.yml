@@ -7,5 +7,5 @@ tasks:
   build_and_run:
     desc: Build and run the binary
     cmds:
-      - cd core && go build -o ../{{.BINARY_NAME}}
+      - cd core/cmd && go build -o ../../{{.BINARY_NAME}}
       - ./{{.BINARY_NAME}}

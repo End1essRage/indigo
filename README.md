@@ -57,5 +57,165 @@ handle()
 ```
 Запуск
 ```bash
-make build_and_run
+task build_and_run
+```
+
+# хранилище
+```yaml
+# Файловое хранилище
+storage:
+  type: "file"
+  file:
+    path: "./data"
+
+# MongoDB
+storage:
+  type: "mongo"
+  mongo:
+    uri: "mongodb://localhost:27017"
+    db: "bot_db"
+```
+
+# клавиатуры
+```yaml
+keyboards:
+  - name: "age_buttons"
+    message: "Выберите возрастную группу:"
+    buttons:
+      - row:
+          - text: "18-25"
+            data: "18-25"
+          - text: "26-35"
+            data: "26-35"
+```
+
+```lua
+function create_dynamic_keyboard()
+  local buttons = {
+    Rows = {}
+  }
+  
+  for i = 1, 5 do
+    table.insert(buttons.Rows, {
+      {Text = "Кнопка "..i, Data = "btn"..i}
+    })
+  end
+  
+  send_keyboard(ctx.chat_id, "Выберите вариант:", buttons)
+end
+```
+
+# формы
+```yaml
+forms:
+  - name: "user_reg"
+    stages:
+      - field: "email"
+        message: "Введите email:"
+        validation:
+          type: "email"
+      - field: "age_group"
+        message: "Выберите возраст:"
+        keyboard: "age_buttons"
+    script: "form_complete.lua"
+```
+
+```lua
+function handle()
+  local data = ctx.form_data
+  
+  if not string.match(data.email, "^.+@.+%..+$") then
+    send_message(ctx.user.id, "❌ Неверный email!")
+    return
+  end
+  
+  storage_save("users", ctx.user.id, data)
+  send_message(ctx.user.id, "✅ Регистрация завершена!")
+end
+```
+
+# http интеграции
+```yaml
+http:
+  endpoints:
+    - path: "/notify"
+      method: "POST"
+      scheme: "auth_scheme"
+      script: "notify.lua"
+```
+
+# Lua
+
+контекст выполнения
+```lua
+ctx = {
+  chat_id = 123456789,     -- ID текущего чата
+  user = {
+    id = 987654321,        -- ID пользователя
+    name = "Иван"          -- Имя пользователя
+  },
+  form_data = {            -- Данные заполненной формы
+    name = "Мария",
+    email = "test@example.com"
+  },
+  req_data = {}
+  cb_data = {}
+  text = "/start"          -- Текст сообщения
+}
+```
+
+работа с ботом
+```lua
+-- Отправка сообщения
+send_message(chat_id, "Привет, мир!")
+
+-- Отправка клавиатуры
+send_keyboard(chat_id, "Выберите:", {
+  Rows = {
+    {
+      {Text = "Да", Data = "yes"},
+      {Text = "Нет", Data = "no"}
+    }
+  }
+})
+```
+
+работа с кэшом
+```lua
+cache_set("temp_data", "123")
+local value = cache_get("temp_data")
+```
+
+работа с хранилищем
+```lua
+-- Сохранение данных
+local success, err = storage_save("users", "user123", {
+  name = "Василий",
+  age = 30
+})
+
+-- Загрузка данных
+local data = storage_load("users", "user123")
+```
+
+http модуль
+```lua
+-- Простой GET запрос
+local res, err = http_get("https://api.example.com/data")
+if res then
+    log("Status: " .. res.status)
+    log("Body: " .. res.body)
+end
+
+-- POST запрос с заголовками
+local json_body = [[{"name": "Lua Bot", "version": 1.0}]]
+local headers = {
+    ["Content-Type"] = "application/json",
+    ["X-Custom-Header"] = "lua-request"
+}
+
+local post_res = http_post("https://api.example.com/update", json_body, headers)
+if post_res then
+    cache_set("last_response", post_res.body)
+end
 ```

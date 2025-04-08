@@ -1,6 +1,42 @@
 bot:
   mode: "polling"
 
+storage:
+  type: "file" # или "mongo"
+  file:
+    path: "./data"
+  mongo:
+    uri: "mongodb://localhost:27017"
+    db: "appdb"
+
+http:
+  address: ":8080"
+  endpoints:
+    - path: "/test-get"
+      method: "GET"
+      scheme: "scheme_null"
+      script: "api_test.lua"
+    - path: "/test"
+      method: "POST"
+      scheme: "scheme_1"
+      script: "api_test.lua"
+  schemes:
+  - name: "scheme_null"
+  - name: "scheme_1"
+    fields:
+      - name: "user_id"
+        type: "string"
+        required: true
+        source: "body"
+      - name: "message"
+        type: "string"
+        required: true
+        source: "body"
+      - name: "X-Request-Id"
+        type: "string"
+        required: false
+        source: "header"
+  
 commands:
   - name: "start"
     description: "Приветствие"
@@ -14,6 +50,29 @@ commands:
   - name: "sosal"
     description: "тест меню"
     reply: "sosal"
+  - name: "register"
+    form: "user_registration"
+
+forms:
+  - name: "user_registration"
+    description: "Регистрация пользователя"
+    stages:
+      - field: "user_name"
+        message: "Введите ваше имя:"
+        validation:
+          type: "string"
+          min_length: 2
+      - field: "user_age"
+        message: "Выберите возрастную группу:"
+        keyboard: "age_groups"
+      - field: "user_email"
+        message: "Введите ваш email:"
+        validation:
+          type: "email"
+      - field: "newsletter"
+        message: "Подписаться на рассылку?"
+        keyboard: "yes_no"
+    script: "user_regestration.lua"
 
 #создание клавиатур
 keyboards:
@@ -21,46 +80,32 @@ keyboards:
     message: "main"
     buttons:
       - row:
-          - name: "btn1"
-            text: "Кнопка 1"
+          - text: "Кнопка 1"
             script: "btn1_handler.lua"
-          - name: "btn2"
-            text: "Кнопка 2"
+          - text: "Кнопка 2"
             data: "customData btn2"
-            script: "btn2_handler.lua"
+            script: "data_save_test.lua"
       - row:
-          - name: "btn3"
-            text: "Кнопка 3"
+          - text: "Кнопка 3"
             script: "btn3_handler.lua"
-          - name: "btn4"
-            text: "Кнопка 4"
+          - text: "Кнопка 4"
             data: "customData btn4"
+  - name: "age_groups"
+    message: "Выберите возраст:"
+    buttons:
+      - row:
+          - text: "18-25 лет"
+            data: "18-25"
+          - text: "26-35 лет"
+            data: "26-35"
 
+  - name: "yes_no"
+    message: "Подтвердите выбор:"
+    buttons:
+      - row:
+          - text: "да"
+            data: "yes"
+          - text: "нет"
+            data: "no"
 
-#обработка последовательных вопросов к пользователю
-forms:
-  - name: "form1"
-    stages:
-      - name: "first stage"
-        output: "введите имя" #msg or script/keyboard
-        input: "user_name"
-      - name: "btn stages"
-        output: 
-          keyboard: "some_keyboard"
-    output:
-      - val: "user_name"
-        type: string
-      - val: "user_old"
-        type: int
-
-#входные и выходные интеграции
-integrations:
-  in:
-    - name: ""
-      data: 
-        - val: ""
-          type: 
-      handler: ""
-  out:
-
-  
+    

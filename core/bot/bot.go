@@ -1,8 +1,13 @@
-package main
+package bot
 
 import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
+
+type CbData struct {
+	Script *string `json:"script,omitempty"`
+	Data   *string `json:"data,omitempty"`
+}
 
 type TgBot struct {
 	bot *tgbotapi.BotAPI
