@@ -2,18 +2,18 @@ bot:
   mode: "polling"
 
 cache:
-  type: "memory" # или "redis"
+  type: "redis" # или "memory"
   redis:
-    address: ""
+    address: "redis:6379"
     password: ""
     db: 0
 
 storage:
-  type: "file" # или "mongo"
+  type: "mongo" # или "file"
   file:
     path: "./data"
   mongo:
-    uri: "mongodb://localhost:27017"
+    uri: "mongodb://admin:password@mongo:27017"
     db: "appdb"
 
 http:

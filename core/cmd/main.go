@@ -14,7 +14,7 @@ import (
 	c "github.com/end1essrage/indigo-core/config"
 	l "github.com/end1essrage/indigo-core/lua"
 	s "github.com/end1essrage/indigo-core/server"
-	"github.com/end1essrage/indigo-core/storage"
+	st "github.com/end1essrage/indigo-core/storage"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
@@ -84,7 +84,11 @@ func main() {
 	var sCache s.Cache
 	switch config.Cache.Type {
 	case "redis":
-		cache := ca.NewRedisCache(config.Cache.Redis.Address, config.Cache.Redis.Password, config.Cache.Redis.DB)
+		cache, err := ca.NewRedisCache(config.Cache.Redis.Address, config.Cache.Redis.Password, config.Cache.Redis.DB)
+		if err != nil {
+			panic(err)
+		}
+
 		lCache = cache
 		sCache = cache
 	default:
@@ -93,14 +97,23 @@ func main() {
 		sCache = cache
 	}
 
+	//хранилище
+	var storage l.Storage
+	switch config.Storage.Type {
+	case "mongo":
+		storage, err = st.NewMongoStorage(config.Storage.Mongo.Uri, config.Storage.Mongo.Db)
+		if err != nil {
+			panic(err)
+		}
+	default:
+		storage, err = st.NewFileStorage(config.Storage.File.Path)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	//http клиент
 	client := client.NewHttpClient()
-
-	//хранилище
-	storage, err := storage.NewFileStorage(config.Storage.File.Path)
-	if err != nil {
-		panic(err)
-	}
 
 	//луа движок
 	le := l.NewLuaEngine(bot, lCache, client, storage, ScriptsPath)

@@ -14,7 +14,7 @@ type RedisCache struct {
 	client *redis.Client
 }
 
-func NewRedisCache(addr, pwd string, db int) *RedisCache {
+func NewRedisCache(addr, pwd string, db int) (*RedisCache, error) {
 	c := &RedisCache{}
 	c.client = redis.NewClient(&redis.Options{
 		Addr:     addr,
@@ -22,7 +22,12 @@ func NewRedisCache(addr, pwd string, db int) *RedisCache {
 		DB:       db,
 	})
 
-	return c
+	_, err := c.client.Ping(context.Background()).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
 }
 
 func (c *RedisCache) GetString(key string) string {

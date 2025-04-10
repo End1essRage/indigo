@@ -24,6 +24,34 @@ tasks:
       - cd core/cmd && go build -o ../../{{.BINARY_NAME}}
       - ./{{.BINARY_NAME}} --race
 
+  run:
+    desc: Run container from the built image
+    deps: [remove]
+    cmds:
+      - >-
+        docker run -d --name {{.IMAGE_NAME}}
+        -v {{.CONFIG_DIR}}:/app/config
+        -v {{.SCRIPTS_DIR}}:/app/scripts
+        -v {{.DATA_DIR}}:/app/data
+        -e CONFIG_PATH=/config/config.yaml
+        -e SCRIPTS_PATH=/app/scripts
+        -e BOT_TOKEN={{.BOT_TOKEN}}
+        -p {{.PORT_BINDING}}
+        {{.DOCKER_REGISTRY}}{{.IMAGE_NAME}}:{{.VERSION}}
+
+ # Запуск всех сервисов через Docker Compose
+  up:
+    desc: Start Redis, MongoDB, and the bot
+    cmds:
+      - export BOT_TOKEN={{.BOT_TOKEN}}
+      - docker-compose up -d --build
+
+  # Остановка всех сервисов
+  down:
+    desc: Stop all services
+    cmds:
+      - docker-compose down
+
   build:
     desc: Build Docker image with multiple tags
     cmds:
@@ -43,21 +71,6 @@ tasks:
     desc: Remove existing container
     cmds:
       - docker rm -f {{.IMAGE_NAME}} || true
-
-  run:
-    desc: Run container from the built image
-    deps: [remove]
-    cmds:
-      - >-
-        docker run -d --name {{.IMAGE_NAME}}
-        -v {{.CONFIG_DIR}}:/app/config
-        -v {{.SCRIPTS_DIR}}:/app/scripts
-        -v {{.DATA_DIR}}:/app/data
-        -e CONFIG_PATH=/config/config.yaml
-        -e SCRIPTS_PATH=/app/scripts
-        -e BOT_TOKEN={{.BOT_TOKEN}}
-        -p {{.PORT_BINDING}}
-        {{.DOCKER_REGISTRY}}{{.IMAGE_NAME}}:{{.VERSION}}
 
   all:
     desc: Build, tag and push image
