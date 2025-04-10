@@ -2,14 +2,14 @@ bot:
   mode: "polling"
 
 cache:
-  type: "redis" # или "memory"
+  type: "memory" # или "redis"
   redis:
     address: "redis:6379"
     password: ""
     db: 0
 
 storage:
-  type: "mongo" # или "file"
+  type: "file" # или "mongo"
   file:
     path: "./data"
   mongo:
