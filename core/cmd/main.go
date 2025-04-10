@@ -29,11 +29,12 @@ var (
 const (
 	defaultConfigPath  = "/config/config.yaml"
 	defaultScriptsPath = "/app/scripts"
+	validate           = true
 )
 
 func init() {
-	logrus.SetFormatter(&logrus.JSONFormatter{})
-
+	logrus.SetFormatter(&logrus.TextFormatter{})
+	logrus.SetLevel(logrus.DebugLevel)
 	//parse env
 	if err := godotenv.Load(); err != nil {
 		logrus.Warning("error while reading environment", err.Error())
@@ -63,12 +64,10 @@ func main() {
 		panic(err)
 	}
 	//загружаем конфиг
-	config, err := c.LoadConfig(path.Join(curDir, ConfigPath))
+	config, err := c.LoadConfig(path.Join(curDir, ConfigPath), validate)
 	if err != nil {
 		log.Fatalf("Error loading config: %v", err)
 	}
-
-	logrus.Infof("config data: %v", config)
 
 	if Token == "" {
 		panic("no token provided")

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 
 	yaml "github.com/goccy/go-yaml"
@@ -31,7 +32,6 @@ type KeyboardRow struct {
 
 type Keyboard struct {
 	Name    string         `yaml:"name"`
-	Script  *string        `yaml:"script,omitempty"`
 	Message *string        `yaml:"message,omitempty"`
 	Buttons *[]KeyboardRow `yaml:"buttons,omitempty"`
 }
@@ -116,8 +116,10 @@ type Config struct {
 	Forms     map[string]*Form
 }
 
+type ValidationErr error
+
 // Config loader
-func LoadConfig(path string) (*Config, error) {
+func LoadConfig(path string, validate bool) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -126,6 +128,13 @@ func LoadConfig(path string) (*Config, error) {
 	var yConfig YamlConfig
 	if err := yaml.Unmarshal(data, &yConfig); err != nil {
 		return nil, err
+	}
+
+	if validate {
+		ok, desc := Validate(&yConfig)
+		if !ok {
+			return nil, fmt.Errorf("ошибка валидации: %s", desc)
+		}
 	}
 
 	var config Config

@@ -12,7 +12,39 @@ vars:
   PORT_BINDING: 80:8080
 
 tasks:
-  #локальный запуск
+  # тесты
+  
+  # Запуск всех тестов с race detector
+  test:
+    desc: Run tests with race detector
+    env:
+      CGO_ENABLED: "1"
+    cmds:
+      - cd core && go test -v -race ./...
+
+  # Запуск бенчмарков
+  bench:
+    desc: Run benchmarks
+    env:
+      CGO_ENABLED: "1"
+    cmds:
+      - cd core && go test -bench=. -benchmem -v ./...
+
+  # Покрытие кода
+  test_cover:
+    desc: Generate test coverage
+    cmds:
+      - cd core && go test -coverprofile=coverage.out ./...
+      - cd core && go tool cover -html=coverage.out
+
+  # Очистка
+  test_clean:
+    desc: Clean test artifacts
+    cmds:
+      - cd core && go clean -testcache
+      - cd core && rm -f coverage.out
+
+  # локальный запуск
   local:
     desc: Build and run the binary
     cmds:
