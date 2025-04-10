@@ -17,7 +17,7 @@ import (
 
 //при использовании в личке chat.Id == From.Id
 
-type Cache interface {
+type Buffer interface {
 	GetString(key string) string
 	SetString(key string, val string) error
 	Exists(key string) bool
@@ -28,7 +28,6 @@ type Server struct {
 	bot        *b.TgBot
 	config     *c.Config
 	api        *api.API
-	cache      Cache
 	formWorker *FormWorker
 	stopping   bool
 	handling   bool
@@ -36,13 +35,12 @@ type Server struct {
 	mu         sync.Mutex
 }
 
-func NewServer(le *l.LuaEngine, bot *b.TgBot, config *c.Config, cache Cache) *Server {
+func NewServer(le *l.LuaEngine, bot *b.TgBot, config *c.Config, buffer Buffer) *Server {
 	s := &Server{
 		le:         le,
 		bot:        bot,
 		config:     config,
-		cache:      cache,
-		formWorker: NewFormWorker(bot, cache, config, le),
+		formWorker: NewFormWorker(bot, buffer, config, le),
 		stopped:    make(chan struct{}),
 	}
 	if s.config.HTTP != nil {

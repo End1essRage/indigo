@@ -79,22 +79,20 @@ func main() {
 	//обертка над тг ботом
 	bot := b.NewBot(tBot)
 
+	//buffer
+	buffer := ca.NewInMemoryCache(5 * time.Minute)
+
 	//кэш
 	var lCache l.Cache
-	var sCache s.Cache
 	switch config.Cache.Type {
 	case "redis":
 		cache, err := ca.NewRedisCache(config.Cache.Redis.Address, config.Cache.Redis.Password, config.Cache.Redis.DB)
 		if err != nil {
 			panic(err)
 		}
-
 		lCache = cache
-		sCache = cache
 	default:
-		cache := ca.NewInMemoryCache(5 * time.Minute)
-		lCache = cache
-		sCache = cache
+		lCache = buffer
 	}
 
 	//хранилище
@@ -119,7 +117,7 @@ func main() {
 	le := l.NewLuaEngine(bot, lCache, client, storage, ScriptsPath)
 
 	//обрабатывающий сервер
-	server := s.NewServer(le, bot, config, sCache)
+	server := s.NewServer(le, bot, config, buffer)
 
 	//получаем обновления
 	u := tgbotapi.NewUpdate(0)

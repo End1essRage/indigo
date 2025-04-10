@@ -26,15 +26,15 @@ import (
 
 type FormWorker struct {
 	bot    *b.TgBot
-	cache  Cache
+	buffer Buffer
 	config *c.Config
 	le     *l.LuaEngine
 }
 
-func NewFormWorker(bot *b.TgBot, cache Cache, config *c.Config, le *l.LuaEngine) *FormWorker {
+func NewFormWorker(bot *b.TgBot, buffer Buffer, config *c.Config, le *l.LuaEngine) *FormWorker {
 	return &FormWorker{
 		bot:    bot,
-		cache:  cache,
+		buffer: buffer,
 		config: config,
 		le:     le,
 	}
@@ -42,10 +42,10 @@ func NewFormWorker(bot *b.TgBot, cache Cache, config *c.Config, le *l.LuaEngine)
 
 func (fw *FormWorker) HasActiveForm(upd *tgbotapi.Update) bool {
 	if upd.Message != nil {
-		return fw.cache.Exists(fw.formKey(upd.Message.From.ID))
+		return fw.buffer.Exists(fw.formKey(upd.Message.From.ID))
 	}
 	if upd.CallbackQuery != nil {
-		return fw.cache.Exists(fw.formKey(upd.CallbackQuery.From.ID))
+		return fw.buffer.Exists(fw.formKey(upd.CallbackQuery.From.ID))
 	}
 	return false
 }
@@ -56,8 +56,8 @@ func (fw *FormWorker) StartForm(formName string, userID int64, upd *tgbotapi.Upd
 		return fmt.Errorf("form '%s' not found", formName)
 	}
 
-	fw.cache.SetString(fw.formKey(userID), formName)
-	fw.cache.SetString(fw.progressKey(userID), "0")
+	fw.buffer.SetString(fw.formKey(userID), formName)
+	fw.buffer.SetString(fw.progressKey(userID), "0")
 	return fw.sendFormStep(userID, 0, upd)
 }
 
@@ -78,12 +78,12 @@ func (fw *FormWorker) HandleInput(upd *tgbotapi.Update) {
 		return
 	}
 
-	formName := fw.cache.GetString(fw.formKey(userID))
+	formName := fw.buffer.GetString(fw.formKey(userID))
 	if formName == "" {
 		return
 	}
 
-	progress, _ := strconv.Atoi(fw.cache.GetString(fw.progressKey(userID)))
+	progress, _ := strconv.Atoi(fw.buffer.GetString(fw.progressKey(userID)))
 	form := fw.config.Forms[formName]
 
 	if progress >= len(form.Stages) {
@@ -109,7 +109,7 @@ func (fw *FormWorker) HandleInput(upd *tgbotapi.Update) {
 	fw.saveFormData(userID, currentStep.Field, input)
 
 	if progress < len(form.Stages)-1 {
-		fw.cache.SetString(fw.progressKey(userID), strconv.Itoa(progress+1))
+		fw.buffer.SetString(fw.progressKey(userID), strconv.Itoa(progress+1))
 		fw.sendFormStep(userID, progress+1, upd)
 	} else {
 		fw.completeForm(userID, form, upd)
@@ -117,7 +117,7 @@ func (fw *FormWorker) HandleInput(upd *tgbotapi.Update) {
 }
 
 func (fw *FormWorker) sendFormStep(userID int64, stepIndex int, upd *tgbotapi.Update) error {
-	formName := fw.cache.GetString(fw.formKey(userID))
+	formName := fw.buffer.GetString(fw.formKey(userID))
 	form := fw.config.Forms[formName]
 	step := form.Stages[stepIndex]
 
@@ -214,16 +214,16 @@ func (fw *FormWorker) dataKey(userID int64, field string) string {
 }
 
 func (fw *FormWorker) saveFormData(userID int64, field, value string) {
-	fw.cache.SetString(fw.dataKey(userID, field), value)
+	fw.buffer.SetString(fw.dataKey(userID, field), value)
 }
 
 func (fw *FormWorker) collectFormData(userID int64) map[string]interface{} {
 	data := make(map[string]interface{})
-	formName := fw.cache.GetString(fw.formKey(userID))
+	formName := fw.buffer.GetString(fw.formKey(userID))
 	form := fw.config.Forms[formName]
 
 	for _, stage := range form.Stages {
-		if val := fw.cache.GetString(fw.dataKey(userID, stage.Field)); val != "" {
+		if val := fw.buffer.GetString(fw.dataKey(userID, stage.Field)); val != "" {
 			data[stage.Field] = val
 		}
 	}
@@ -231,6 +231,6 @@ func (fw *FormWorker) collectFormData(userID int64) map[string]interface{} {
 }
 
 func (fw *FormWorker) clearFormData(userID int64) {
-	fw.cache.SetString(fw.formKey(userID), "")
-	fw.cache.SetString(fw.progressKey(userID), "")
+	fw.buffer.SetString(fw.formKey(userID), "")
+	fw.buffer.SetString(fw.progressKey(userID), "")
 }
