@@ -54,16 +54,6 @@ tasks:
       BOT_TOKEN: "{{.BOT_TOKEN}}"
       SCRIPTS_DIR: "{{.SCRIPTS_DIR}}"
 
-  #локальный запуск c рейс детектором
-  local_race:
-    desc: Build and run the binary
-    cmds:
-      - cd core/cmd && go build -o ../../{{.BINARY_NAME}}
-      - ./{{.BINARY_NAME}} --race
-    env:
-      BOT_TOKEN: "{{.BOT_TOKEN}}"
-      SCRIPTS_DIR: "{{.SCRIPTS_DIR}}"
-
   #запуск контейнера
   run:
     desc: Run container from the built image
@@ -117,7 +107,7 @@ tasks:
   # билд + пуш
   all:
     desc: Build, tag and push image
-    deps: [build, push]
+    deps: [test, build, push]
 
   # удаление локальных имейджей
   clean:
