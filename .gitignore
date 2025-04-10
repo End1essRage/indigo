@@ -5,3 +5,4 @@ data
 mongo_data
 redis_data
 .task
+.txt
