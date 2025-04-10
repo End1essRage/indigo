@@ -52,6 +52,6 @@ func (c *RedisCache) SetString(key string, val string) error {
 
 func (c *RedisCache) Exists(key string) bool {
 	ctx := context.TODO()
-	_, err := c.client.Get(ctx, key).Result()
-	return err == nil
+	val, err := c.client.Get(ctx, key).Result()
+	return err == nil && val != ""
 }
