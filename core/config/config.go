@@ -38,11 +38,21 @@ type Keyboard struct {
 
 type YamlConfig struct {
 	Bot       BotConfig     `yaml:"bot"`
+	Cache     CacheConfig   `yaml:"cache"`
 	Storage   StorageConfig `yaml:"storage"`
 	HTTP      *HTTPConfig   `yaml:"http,omitempty"`
 	Commands  []Command     `yaml:"commands"`
 	Keyboards []Keyboard    `yaml:"keyboards,omitempty"`
 	Forms     []Form        `yaml:"forms,omitempty"`
+}
+
+type CacheConfig struct {
+	Type  string `yaml:"type"`
+	Redis *struct {
+		Address  string `yaml:"address"`
+		Password string `yaml:"password"`
+		DB       int    `yaml:"db"`
+	} `yaml:"redis,omitempty"`
 }
 
 type Form struct {
@@ -99,6 +109,7 @@ type Field struct {
 type Config struct {
 	Bot       BotConfig
 	HTTP      *HTTPConfig
+	Cache     CacheConfig
 	Storage   StorageConfig
 	Commands  map[string]*Command
 	Keyboards map[string]*Keyboard
@@ -121,6 +132,7 @@ func LoadConfig(path string) (*Config, error) {
 	config.Bot = yConfig.Bot
 	config.HTTP = yConfig.HTTP
 	config.Storage = yConfig.Storage
+	config.Cache = yConfig.Cache
 
 	//fill commands
 	config.Commands = make(map[string]*Command)

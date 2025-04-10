@@ -1,6 +1,13 @@
 bot:
   mode: "polling"
 
+cache:
+  type: "memory" # или "redis"
+  redis:
+    address: ""
+    password: ""
+    db: 0
+
 storage:
   type: "file" # или "mongo"
   file:

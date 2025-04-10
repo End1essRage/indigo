@@ -9,7 +9,7 @@ import (
 	"time"
 
 	b "github.com/end1essrage/indigo-core/bot"
-	cache "github.com/end1essrage/indigo-core/cache"
+	ca "github.com/end1essrage/indigo-core/cache"
 	"github.com/end1essrage/indigo-core/client"
 	c "github.com/end1essrage/indigo-core/config"
 	l "github.com/end1essrage/indigo-core/lua"
@@ -80,7 +80,18 @@ func main() {
 	bot := b.NewBot(tBot)
 
 	//кэш
-	cache := cache.NewInMemoryCache(5 * time.Minute)
+	var lCache l.Cache
+	var sCache s.Cache
+	switch config.Cache.Type {
+	case "redis":
+		cache := ca.NewRedisCache(config.Cache.Redis.Address, config.Cache.Redis.Password, config.Cache.Redis.DB)
+		lCache = cache
+		sCache = cache
+	default:
+		cache := ca.NewInMemoryCache(5 * time.Minute)
+		lCache = cache
+		sCache = cache
+	}
 
 	//http клиент
 	client := client.NewHttpClient()
@@ -92,10 +103,10 @@ func main() {
 	}
 
 	//луа движок
-	le := l.NewLuaEngine(bot, cache, client, storage, ScriptsPath)
+	le := l.NewLuaEngine(bot, lCache, client, storage, ScriptsPath)
 
 	//обрабатывающий сервер
-	server := s.NewServer(le, bot, config, cache)
+	server := s.NewServer(le, bot, config, sCache)
 
 	//получаем обновления
 	u := tgbotapi.NewUpdate(0)
@@ -113,7 +124,7 @@ func main() {
 	<-quit
 
 	tBot.StopReceivingUpdates()
-	cache.Stop()
+
 	server.Stop()
 
 	logrus.Info("Server stopped")
