@@ -80,7 +80,7 @@ func (m *StorageModule) Apply(L *lua.LState) {
 // Кэш
 type Cache interface {
 	GetString(key string) string
-	SetString(key string, val string)
+	SetString(key string, val string) error
 }
 
 type CacheModule struct{ cache Cache }

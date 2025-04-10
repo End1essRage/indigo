@@ -9,12 +9,12 @@ import (
 	"time"
 
 	b "github.com/end1essrage/indigo-core/bot"
-	cache "github.com/end1essrage/indigo-core/cache"
+	ca "github.com/end1essrage/indigo-core/cache"
 	"github.com/end1essrage/indigo-core/client"
 	c "github.com/end1essrage/indigo-core/config"
 	l "github.com/end1essrage/indigo-core/lua"
 	s "github.com/end1essrage/indigo-core/server"
-	"github.com/end1essrage/indigo-core/storage"
+	st "github.com/end1essrage/indigo-core/storage"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
@@ -24,6 +24,11 @@ var (
 	Token       string
 	ConfigPath  string
 	ScriptsPath string
+)
+
+const (
+	defaultConfigPath  = "/config/config.yaml"
+	defaultScriptsPath = "/app/scripts"
 )
 
 func init() {
@@ -41,12 +46,14 @@ func init() {
 
 	ConfigPath = os.Getenv("CONFIG_PATH")
 	if ConfigPath == "" {
-		logrus.Warn("cant set ConfigPath")
+		logrus.Warn("cant set ConfigPath, setting to default")
+		ConfigPath = defaultConfigPath
 	}
 
 	ScriptsPath = os.Getenv("SCRIPTS_PATH")
-	if ConfigPath == "" {
-		logrus.Warn("cant set ScriptsPath")
+	if ScriptsPath == "" {
+		logrus.Warn("cant set ScriptsPath, setting to default")
+		ScriptsPath = defaultScriptsPath
 	}
 }
 
@@ -79,23 +86,45 @@ func main() {
 	//обертка над тг ботом
 	bot := b.NewBot(tBot)
 
+	//buffer
+	buffer := ca.NewInMemoryCache(5 * time.Minute)
+
 	//кэш
-	cache := cache.NewInMemoryCache(5 * time.Minute)
+	var cache l.Cache
+	switch config.Cache.Type {
+	case "redis":
+		redis, err := ca.NewRedisCache(config.Cache.Redis.Address, config.Cache.Redis.Password, config.Cache.Redis.DB)
+		if err != nil {
+			panic(err)
+		}
+		cache = redis
+	default:
+		cache = buffer
+	}
+
+	//хранилище
+	var storage l.Storage
+	switch config.Storage.Type {
+	case "mongo":
+		storage, err = st.NewMongoStorage(config.Storage.Mongo.Uri, config.Storage.Mongo.Db)
+		if err != nil {
+			panic(err)
+		}
+	default:
+		storage, err = st.NewFileStorage(config.Storage.File.Path)
+		if err != nil {
+			panic(err)
+		}
+	}
 
 	//http клиент
 	client := client.NewHttpClient()
-
-	//хранилище
-	storage, err := storage.NewFileStorage(config.Storage.File.Path)
-	if err != nil {
-		panic(err)
-	}
 
 	//луа движок
 	le := l.NewLuaEngine(bot, cache, client, storage, ScriptsPath)
 
 	//обрабатывающий сервер
-	server := s.NewServer(le, bot, config, cache)
+	server := s.NewServer(le, bot, config, buffer)
 
 	//получаем обновления
 	u := tgbotapi.NewUpdate(0)
@@ -113,7 +142,7 @@ func main() {
 	<-quit
 
 	tBot.StopReceivingUpdates()
-	cache.Stop()
+
 	server.Stop()
 
 	logrus.Info("Server stopped")

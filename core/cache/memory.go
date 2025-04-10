@@ -58,7 +58,7 @@ func (c *InMemoryCache) GetString(key string) string {
 	return entry.value
 }
 
-func (c *InMemoryCache) SetString(key string, val string) {
+func (c *InMemoryCache) SetString(key string, val string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -66,6 +66,8 @@ func (c *InMemoryCache) SetString(key string, val string) {
 		value:     val,
 		expiresAt: time.Now().Add(c.ttl),
 	}
+
+	return nil
 }
 
 func (c *InMemoryCache) Exists(key string) bool {
