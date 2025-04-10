@@ -149,18 +149,28 @@ http:
 контекст выполнения
 ```lua
 ctx = {
-  chat_id = 123456789,     -- ID текущего чата
-  user = {
-    id = 987654321,        -- ID пользователя
-    name = "Иван"          -- Имя пользователя
-  },
-  form_data = {            -- Данные заполненной формы
-    name = "Мария",
-    email = "test@example.com"
-  },
-  req_data = {}
-  cb_data = {}
-  text = "/start"          -- Текст сообщения
+    chat_id = 12345,          -- Числовой ID чата
+    text = "Сообщение",       -- Текст полученного сообщения
+    
+    cb_data = {               -- Данные callback
+        script = "script_name",
+        data = "custom_data"
+    },
+    
+    form_data = {             -- Данные формы (если есть)
+        field1 = "value1",
+        field2 = "value2"
+    },
+    
+    req_data = {              -- Произвольные данные запроса
+        param1 = "data1",
+        param2 = "data2"
+    },
+    
+    user = {                  -- Информация о пользователе
+        id = 54321,           -- Числовой ID пользователя
+        name = "Имя_пользователя"
+    }
 }
 ```
 

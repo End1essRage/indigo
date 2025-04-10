@@ -10,14 +10,6 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-type MeshReplyKeyboard struct {
-	Rows [][]MeshReplyButton
-}
-
-type MeshReplyButton struct {
-	Text string
-}
-
 type MeshInlineKeyboard struct {
 	Rows [][]MeshInlineButton
 }

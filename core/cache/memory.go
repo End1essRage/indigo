@@ -7,7 +7,7 @@ import (
 
 type InMemoryCache struct {
 	data     map[string]cacheEntry
-	mu       sync.RWMutex
+	mu       sync.Mutex
 	ttl      time.Duration
 	stopChan chan struct{}
 }
@@ -48,8 +48,8 @@ func (c *InMemoryCache) Stop() {
 }
 
 func (c *InMemoryCache) GetString(key string) string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	entry, exists := c.data[key]
 	if !exists || time.Now().After(entry.expiresAt) {

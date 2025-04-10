@@ -18,6 +18,12 @@ tasks:
       - cd core/cmd && go build -o ../../{{.BINARY_NAME}}
       - ./{{.BINARY_NAME}}
 
+  local_race:
+    desc: Build and run the binary
+    cmds:
+      - cd core/cmd && go build -o ../../{{.BINARY_NAME}}
+      - ./{{.BINARY_NAME}} --race
+
   build:
     desc: Build Docker image with multiple tags
     cmds:

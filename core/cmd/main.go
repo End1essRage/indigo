@@ -73,7 +73,7 @@ func main() {
 		logrus.Fatal(err)
 	}
 
-	tBot.Debug = true
+	tBot.Debug = false
 	logrus.Infof("Authorized on account %s", tBot.Self.UserName)
 
 	//обертка над тг ботом

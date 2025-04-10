@@ -46,7 +46,7 @@ func NewServer(le *l.LuaEngine, bot *b.TgBot, config *c.Config, cache Cache) *Se
 		stopped:    make(chan struct{}),
 	}
 	if s.config.HTTP != nil {
-		s.api = api.New(s.le, s.config)
+		s.api = api.New(s.le, s.config.HTTP)
 	}
 	return s
 }

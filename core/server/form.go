@@ -21,6 +21,9 @@ import (
 
 //сейчас все крепится на юзер айди, формы в глобал чатах стоит запретить
 
+//Надо улучшить механиз удаления сообщений, записывая их в буфер, стоит создать временные сообщения и сообщения этапа
+//например ошибки валидации надо удалять после переввода пользователем, вопросы наверное тоже стоит удалять автоматически
+
 type FormWorker struct {
 	bot    *b.TgBot
 	cache  Cache
@@ -90,7 +93,13 @@ func (fw *FormWorker) HandleInput(upd *tgbotapi.Update) {
 
 	currentStep := form.Stages[progress]
 
-	if upd.Message != nil && input != "" {
+	//ожидалось нажатие кнопки но его не рпоизошло
+	if currentStep.Keyboard != nil && upd.CallbackQuery == nil {
+		fw.sendValidationError(userID)
+		return
+	}
+
+	if upd.Message != nil && input != "" && currentStep.Validation != nil {
 		if !fw.validateInput(*currentStep.Validation, input) {
 			fw.sendValidationError(userID)
 			return

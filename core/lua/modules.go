@@ -106,7 +106,6 @@ func (m *CacheModule) Apply(L *lua.LState) {
 }
 
 // Тг апи
-// интерфейс описывает какие ручки торчат в lua
 type Bot interface {
 	SendMessage(chatId int64, text string) error
 	SendKeyboard(chatId int64, text string, mesh b.MeshInlineKeyboard) error

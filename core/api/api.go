@@ -19,14 +19,14 @@ type API struct {
 	router   *chi.Mux
 	server   *http.Server
 	le       *lua.LuaEngine
-	config   *config.Config
+	config   *config.HTTPConfig
 	stopping bool
 	handling bool
 	stopped  chan struct{}
 	mu       sync.Mutex
 }
 
-func New(le *lua.LuaEngine, cfg *config.Config) *API {
+func New(le *lua.LuaEngine, cfg *config.HTTPConfig) *API {
 	r := chi.NewRouter()
 
 	return &API{
@@ -42,12 +42,12 @@ func (a *API) Start() error {
 	a.registerHandlers()
 
 	a.server = &http.Server{
-		Addr:    a.config.HTTP.Address,
+		Addr:    a.config.Address,
 		Handler: a.router,
 	}
 
 	go func() {
-		logrus.Infof("Starting API server on %s", a.config.HTTP.Address)
+		logrus.Infof("Starting API server on %s", a.config.Address)
 		if err := a.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logrus.Fatalf("API server error: %v", err)
 		}
@@ -57,7 +57,7 @@ func (a *API) Start() error {
 }
 
 func (a *API) registerHandlers() {
-	for _, endpoint := range a.config.HTTP.Endpoints {
+	for _, endpoint := range a.config.Endpoints {
 		scheme := a.findScheme(endpoint.Scheme)
 		if scheme == nil {
 			logrus.Errorf("Scheme %s not found for endpoint %s", endpoint.Scheme, endpoint.Path)
@@ -164,7 +164,7 @@ func (a *API) parseBodyField(r *http.Request, field config.Field) (interface{}, 
 }
 
 func (a *API) findScheme(name string) *config.Scheme {
-	for _, s := range a.config.HTTP.Schemes {
+	for _, s := range a.config.Schemes {
 		if s.Name == name {
 			return &s
 		}
