@@ -26,7 +26,7 @@ type LuaCbData struct {
 }
 
 type Module interface {
-	Apply(le *LuaEngine, L *lua.LState)
+	Apply(L *lua.LState)
 }
 
 // LuaStateBuilder для конфигурации стейта под конкретный скрипт
@@ -51,11 +51,11 @@ func (b *LuaStateBuilder) Build() *lua.LState {
 
 	// Базовые модули
 	base := CoreModule{}
-	base.Apply(b.le, L)
+	base.Apply(L)
 
 	// Кастомные модули
 	for _, module := range b.modules {
-		module.Apply(b.le, L)
+		module.Apply(L)
 	}
 
 	return L
@@ -77,10 +77,10 @@ func NewLuaEngine(b Bot, c Cache, h HttpClient, s Storage, path string) *LuaEngi
 func (le *LuaEngine) ExecuteScript(scriptPath string, lContext LuaContext) error {
 	logrus.Infof("ExecuteScript path:%s", scriptPath)
 	L := NewStateBuilder(le).
-		WithModule(&CacheModule{}).
-		WithModule(&BotModule{}).
-		WithModule(&HttpModule{}).
-		WithModule(&StorageModule{}).
+		WithModule(&CacheModule{cache: le.cache}).
+		WithModule(&BotModule{bot: le.bot}).
+		WithModule(&HttpModule{client: le.http}).
+		WithModule(&StorageModule{storage: le.storage}).
 		Build()
 	defer L.Close()
 

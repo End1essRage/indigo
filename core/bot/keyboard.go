@@ -7,6 +7,7 @@ import (
 	c "github.com/end1essrage/indigo-core/config"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/sirupsen/logrus"
+	lua "github.com/yuin/gopher-lua"
 )
 
 type MeshReplyKeyboard struct {
@@ -52,6 +53,44 @@ func CreateInlineKeyboard(mesh MeshInlineKeyboard) [][]tgbotapi.InlineKeyboardBu
 	}
 
 	return keyboard
+}
+
+// функция для конвертации Lua таблицы в MeshKeyboard
+func FromLuaTableToMeshInlineKeyboard(lt *lua.LTable) MeshInlineKeyboard {
+	var mesh MeshInlineKeyboard
+
+	lt.ForEach(func(key lua.LValue, value lua.LValue) {
+		if key.String() == "Rows" {
+			if rows, ok := value.(*lua.LTable); ok {
+				rows.ForEach(func(rowKey lua.LValue, rowValue lua.LValue) {
+					if row, ok := rowValue.(*lua.LTable); ok {
+						var meshRow []MeshInlineButton
+						row.ForEach(func(btnKey lua.LValue, btnValue lua.LValue) {
+							if btn, ok := btnValue.(*lua.LTable); ok {
+								var meshBtn MeshInlineButton
+								btn.ForEach(func(fieldKey lua.LValue, fieldValue lua.LValue) {
+									switch fieldKey.String() {
+									case "Text":
+										meshBtn.Text = fieldValue.String()
+									case "Script":
+										meshBtn.Script = fieldValue.String()
+									case "Data":
+										meshBtn.CustomCbData = fieldValue.String()
+									case "Name":
+										meshBtn.Name = fieldValue.String()
+									}
+								})
+								meshRow = append(meshRow, meshBtn)
+							}
+						})
+						mesh.Rows = append(mesh.Rows, meshRow)
+					}
+				})
+			}
+		}
+	})
+
+	return mesh
 }
 
 func ParseInlineKeyboard(kb *c.Keyboard) MeshInlineKeyboard {

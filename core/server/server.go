@@ -15,6 +15,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+//при использовании в личке chat.Id == From.Id
+
 type Cache interface {
 	GetString(key string) string
 	SetString(key string, val string)
@@ -25,17 +27,17 @@ type Server struct {
 	le         *l.LuaEngine
 	bot        *b.TgBot
 	config     *c.Config
+	api        *api.API
 	cache      Cache
 	formWorker *FormWorker
 	stopping   bool
 	handling   bool
 	stopped    chan struct{}
 	mu         sync.Mutex
-	api        *api.API
 }
 
 func NewServer(le *l.LuaEngine, bot *b.TgBot, config *c.Config, cache Cache) *Server {
-	return &Server{
+	s := &Server{
 		le:         le,
 		bot:        bot,
 		config:     config,
@@ -43,6 +45,10 @@ func NewServer(le *l.LuaEngine, bot *b.TgBot, config *c.Config, cache Cache) *Se
 		formWorker: NewFormWorker(bot, cache, config, le),
 		stopped:    make(chan struct{}),
 	}
+	if s.config.HTTP != nil {
+		s.api = api.New(s.le, s.config)
+	}
+	return s
 }
 
 func (s *Server) Start(updates tgbotapi.UpdatesChannel) {
@@ -53,7 +59,6 @@ func (s *Server) Start(updates tgbotapi.UpdatesChannel) {
 	}()
 
 	if s.config.HTTP != nil {
-		s.api = api.New(s.bot, s.le, s.config)
 		go func() {
 			if err := s.api.Start(); err != nil {
 				logrus.Fatalf("Failed to start API: %v", err)
@@ -78,19 +83,19 @@ func (s *Server) HandleUpdate(update *tgbotapi.Update) {
 		s.mu.Unlock()
 	}()
 
-	// Handle forms first
+	// Формы
 	if s.formWorker.HasActiveForm(update) {
 		s.formWorker.HandleInput(update)
 		return
 	}
 
-	// Handle callback queries
+	// Кнопки
 	if update.CallbackQuery != nil {
 		s.handleCallbackQuery(update.CallbackQuery)
 		return
 	}
 
-	// Handle commands
+	// Команды
 	if update.Message != nil && update.Message.IsCommand() {
 		s.handleCommand(update)
 	}
@@ -115,9 +120,13 @@ func (s *Server) Stop() {
 }
 
 func (s *Server) handleCallbackQuery(query *tgbotapi.CallbackQuery) {
+	// формируем контекст
 	lCtx := m.FromCallbackQueryToLuaContext(query)
+
+	//удаляем сообщение с клавиатурой
 	s.bot.DeleteMsg(lCtx.ChatId, query.Message.MessageID)
 
+	//если есть скрипт запускаем
 	if lCtx.CbData.Script != "" {
 		if err := s.le.ExecuteScript(lCtx.CbData.Script, lCtx); err != nil {
 			logrus.Errorf("Callback script error: %v", err)
@@ -126,19 +135,21 @@ func (s *Server) handleCallbackQuery(query *tgbotapi.CallbackQuery) {
 }
 
 func (s *Server) handleCommand(upd *tgbotapi.Update) {
-	// Handle help command
+	chatId := upd.Message.Chat.ID
+
 	if upd.Message.Command() == "help" {
-		s.bot.SendMessage(upd.Message.Chat.ID, s.formatHelpMessage())
+		s.bot.SendMessage(chatId, s.formatHelpMessage())
 		return
 	}
 
+	//ищем команду
 	cmd := s.config.Commands[upd.Message.Command()]
 	if cmd == nil {
-		s.bot.SendMessage(upd.Message.Chat.ID, "Unknown command: "+upd.Message.Command())
+		s.bot.SendMessage(chatId, "Unknown command: "+upd.Message.Command())
 		return
 	}
 
-	// Execute command script
+	// Выполняем скрипт
 	if cmd.Script != nil && *cmd.Script != "" {
 		ctx := m.FromTgUpdateToLuaContext(upd)
 		if err := s.le.ExecuteScript(*cmd.Script, ctx); err != nil {
@@ -146,17 +157,34 @@ func (s *Server) handleCommand(upd *tgbotapi.Update) {
 		}
 	}
 
-	// Handle form start
+	// Генерируем клавиатуру
+	if cmd.Keyboard != nil && *cmd.Keyboard != "" {
+		kb := s.config.Keyboards[*cmd.Keyboard]
+		if kb == nil {
+			logrus.Errorf("keyboard '%s' not found", *cmd.Keyboard)
+		}
+
+		keyboard := tgbotapi.NewInlineKeyboardMarkup(
+			b.CreateInlineKeyboard(b.ParseInlineKeyboard(kb))...,
+		)
+
+		msg := tgbotapi.NewMessage(chatId, *kb.Message)
+		msg.ReplyMarkup = &keyboard
+
+		s.bot.Send(msg)
+	}
+
+	// Запускаем форму
 	if cmd.Form != nil && *cmd.Form != "" {
 		if err := s.formWorker.StartForm(*cmd.Form, upd.Message.From.ID, upd); err != nil {
 			logrus.Errorf("Form start error: %v", err)
-			s.bot.SendMessage(upd.Message.Chat.ID, "Failed to start form: "+err.Error())
+			s.bot.SendMessage(chatId, "Failed to start form: "+err.Error())
 		}
 	}
 
-	// Send reply if specified
+	// Шлем ответ
 	if cmd.Reply != nil && *cmd.Reply != "" {
-		s.bot.SendMessage(upd.Message.Chat.ID, *cmd.Reply)
+		s.bot.SendMessage(chatId, *cmd.Reply)
 	}
 }
 

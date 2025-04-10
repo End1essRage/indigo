@@ -2,6 +2,7 @@ package bot
 
 import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/sirupsen/logrus"
 )
 
 type CbData struct {
@@ -28,6 +29,20 @@ func (t *TgBot) Send(msg tgbotapi.MessageConfig) error {
 	_, err := t.bot.Send(msg)
 
 	return err
+}
+
+func (t *TgBot) SendKeyboard(chatId int64, text string, mesh MeshInlineKeyboard) error {
+	msg := tgbotapi.NewMessage(chatId, text)
+	msg.ReplyMarkup = tgbotapi.InlineKeyboardMarkup{
+		InlineKeyboard: CreateInlineKeyboard(mesh),
+	}
+
+	if err := t.Send(msg); err != nil {
+		logrus.Errorf("Error sending keyboard: %v", err)
+		return err
+	}
+
+	return nil
 }
 
 func (t *TgBot) DeleteMsg(chatId int64, msgId int) error {

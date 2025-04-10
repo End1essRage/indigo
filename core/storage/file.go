@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -25,7 +24,7 @@ func (fs *FileStorage) getPath(entityType string, id string) string {
 	return filepath.Join(fs.basePath, entityType, id+".json")
 }
 
-func (fs *FileStorage) Save(ctx context.Context, entityType string, id string, data interface{}) error {
+func (fs *FileStorage) Save(entityType string, id string, data interface{}) error {
 	fs.mu.Lock()
 	defer fs.mu.Unlock()
 
@@ -45,7 +44,7 @@ func (fs *FileStorage) Save(ctx context.Context, entityType string, id string, d
 	return enc.Encode(data)
 }
 
-func (fs *FileStorage) Load(ctx context.Context, entityType string, id string, result interface{}) error {
+func (fs *FileStorage) Load(entityType string, id string, result interface{}) error {
 	fs.mu.RLock()
 	defer fs.mu.RUnlock()
 

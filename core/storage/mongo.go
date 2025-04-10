@@ -15,7 +15,6 @@ type MongoStorage struct {
 }
 
 func NewMongoStorage(uri, database string) (*MongoStorage, error) {
-
 	client, err := mongo.Connect(options.Client().ApplyURI(uri))
 	if err != nil {
 		return nil, err
@@ -27,7 +26,10 @@ func NewMongoStorage(uri, database string) (*MongoStorage, error) {
 	}, nil
 }
 
-func (ms *MongoStorage) Save(ctx context.Context, entityType string, id string, data interface{}) error {
+//вот тут надо не принимать контекст а создавать с таймаутом ну или оборачивать в таймаут
+
+func (ms *MongoStorage) Save(entityType string, id string, data interface{}) error {
+	ctx := context.TODO()
 	coll := ms.client.Database(ms.database).Collection(string(entityType))
 
 	_, err := coll.UpdateOne(ctx,
@@ -38,7 +40,8 @@ func (ms *MongoStorage) Save(ctx context.Context, entityType string, id string, 
 	return err
 }
 
-func (ms *MongoStorage) Load(ctx context.Context, entityType string, id string, result interface{}) error {
+func (ms *MongoStorage) Load(entityType string, id string, result interface{}) error {
+	ctx := context.TODO()
 	coll := ms.client.Database(ms.database).Collection(string(entityType))
 
 	return coll.FindOne(ctx, bson.M{"_id": id}).Decode(result)

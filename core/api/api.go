@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/end1essrage/indigo-core/bot"
 	"github.com/end1essrage/indigo-core/config"
 	"github.com/end1essrage/indigo-core/lua"
 	"github.com/go-chi/chi/v5"
@@ -19,7 +18,6 @@ import (
 type API struct {
 	router   *chi.Mux
 	server   *http.Server
-	bot      *bot.TgBot
 	le       *lua.LuaEngine
 	config   *config.Config
 	stopping bool
@@ -28,12 +26,11 @@ type API struct {
 	mu       sync.Mutex
 }
 
-func New(bot *bot.TgBot, le *lua.LuaEngine, cfg *config.Config) *API {
+func New(le *lua.LuaEngine, cfg *config.Config) *API {
 	r := chi.NewRouter()
 
 	return &API{
 		router:  r,
-		bot:     bot,
 		le:      le,
 		config:  cfg,
 		stopped: make(chan struct{}),
