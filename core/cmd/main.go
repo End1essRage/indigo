@@ -26,6 +26,11 @@ var (
 	ScriptsPath string
 )
 
+const (
+	defaultConfigPath  = "/config/config.yaml"
+	defaultScriptsPath = "/app/scripts"
+)
+
 func init() {
 	logrus.SetFormatter(&logrus.JSONFormatter{})
 
@@ -41,12 +46,14 @@ func init() {
 
 	ConfigPath = os.Getenv("CONFIG_PATH")
 	if ConfigPath == "" {
-		logrus.Warn("cant set ConfigPath")
+		logrus.Warn("cant set ConfigPath, setting to default")
+		ConfigPath = defaultConfigPath
 	}
 
 	ScriptsPath = os.Getenv("SCRIPTS_PATH")
-	if ConfigPath == "" {
-		logrus.Warn("cant set ScriptsPath")
+	if ScriptsPath == "" {
+		logrus.Warn("cant set ScriptsPath, setting to default")
+		ScriptsPath = defaultScriptsPath
 	}
 }
 
@@ -83,16 +90,16 @@ func main() {
 	buffer := ca.NewInMemoryCache(5 * time.Minute)
 
 	//кэш
-	var lCache l.Cache
+	var cache l.Cache
 	switch config.Cache.Type {
 	case "redis":
-		cache, err := ca.NewRedisCache(config.Cache.Redis.Address, config.Cache.Redis.Password, config.Cache.Redis.DB)
+		redis, err := ca.NewRedisCache(config.Cache.Redis.Address, config.Cache.Redis.Password, config.Cache.Redis.DB)
 		if err != nil {
 			panic(err)
 		}
-		lCache = cache
+		cache = redis
 	default:
-		lCache = buffer
+		cache = buffer
 	}
 
 	//хранилище
@@ -114,7 +121,7 @@ func main() {
 	client := client.NewHttpClient()
 
 	//луа движок
-	le := l.NewLuaEngine(bot, lCache, client, storage, ScriptsPath)
+	le := l.NewLuaEngine(bot, cache, client, storage, ScriptsPath)
 
 	//обрабатывающий сервер
 	server := s.NewServer(le, bot, config, buffer)
