@@ -8,7 +8,8 @@
 
 ## 🚀 Быстрый старт
 
-1)установить taskfile \n
+1)установить taskfile 
+
 2)task local BOT_TOKEN="токен"
 
 ### 1. Конфигурация
@@ -47,9 +48,10 @@ keyboards:
             handler: "btn1_handler.lua"
 ```
 2. Переменные окружения:
-BOT_TOKEN \n
+BOT_TOKEN
+
 CONFIG_PATH
-3. Пример скрипта (welcome.lua)
+4. Пример скрипта (welcome.lua)
 ```lua
 local function handle()
     log("Скрипт запущен! User ID: " .. ctx.user.id)
