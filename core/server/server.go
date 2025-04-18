@@ -135,6 +135,7 @@ func (s *Server) handleCallbackQuery(query *tgbotapi.CallbackQuery) {
 func (s *Server) handleCommand(upd *tgbotapi.Update) {
 	chatId := upd.Message.Chat.ID
 
+	// атвообработка команды хелп,мб стоит дать возможность оверрайдить
 	if upd.Message.Command() == "help" {
 		s.bot.SendMessage(chatId, s.formatHelpMessage())
 		return

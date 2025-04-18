@@ -74,9 +74,9 @@ func (c *InMemoryCache) Exists(key string) bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	_, exists := c.data[key]
+	val, exists := c.data[key]
 
-	return exists
+	return exists && val.value != ""
 }
 
 func (c *InMemoryCache) cleanup() {

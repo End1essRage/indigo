@@ -8,6 +8,8 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
+// TODO единый модуль перехвата и обработки ошибок, стоит ли их ваще прокидывать в луа
+
 // Core
 type CoreModule struct{}
 

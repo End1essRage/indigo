@@ -2,64 +2,13 @@ package lua
 
 import (
 	"fmt"
-	"net/http"
-	"path"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 	lua "github.com/yuin/gopher-lua"
 )
-
-type LuaContext struct {
-	RequestData map[string]interface{}
-	FormData    map[string]interface{}
-	Headers     http.Header
-	MessageText string
-	CbData      LuaCbData
-	ChatId      int64
-	FromId      int64
-	FromName    string
-}
-
-type LuaCbData struct {
-	Script string
-	Data   string
-}
-
-type Module interface {
-	Apply(L *lua.LState)
-}
-
-// LuaStateBuilder для конфигурации стейта под конкретный скрипт
-type LuaStateBuilder struct {
-	modules []Module
-	le      *LuaEngine
-}
-
-func NewStateBuilder(engine *LuaEngine) *LuaStateBuilder {
-	return &LuaStateBuilder{
-		le: engine,
-	}
-}
-
-func (b *LuaStateBuilder) WithModule(m Module) *LuaStateBuilder {
-	b.modules = append(b.modules, m)
-	return b
-}
-
-func (b *LuaStateBuilder) Build() *lua.LState {
-	L := lua.NewState()
-
-	// Базовые модули
-	base := CoreModule{}
-	base.Apply(L)
-
-	// Кастомные модули
-	for _, module := range b.modules {
-		module.Apply(L)
-	}
-
-	return L
-}
 
 // Lua engine wrapper
 type LuaEngine struct {
@@ -68,14 +17,76 @@ type LuaEngine struct {
 	http     HttpClient
 	storage  Storage
 	BasePath string
+	scripts  map[string][]byte
 }
 
 func NewLuaEngine(b Bot, c Cache, h HttpClient, s Storage, path string) *LuaEngine {
-	return &LuaEngine{bot: b, cache: c, http: h, storage: s, BasePath: path}
+	engine := &LuaEngine{bot: b, cache: c, http: h, storage: s, BasePath: path}
+	buffer, err := LoadScripts(path)
+	if err != nil {
+		logrus.Fatalf("ошибка загрузки скриптов %v", err)
+	}
+
+	engine.scripts = buffer
+	return engine
 }
 
+func LoadScripts(p string) (map[string][]byte, error) {
+	buffer := make(map[string][]byte)
+
+	dir, err := os.ReadDir(p)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, f := range dir {
+		info, err := f.Info()
+		if err != nil {
+			return nil, err
+		}
+
+		if _, exists := buffer[info.Name()]; exists {
+			return nil, fmt.Errorf("name conflict between file and directory: %s", info.Name())
+		}
+
+		sPath := filepath.Join(p, info.Name())
+		//рекурсивно обрабатываем
+		if info.IsDir() {
+			logrus.Info("зашел в подпапку")
+			innerData, err := LoadScripts(sPath)
+			if err != nil {
+				return nil, err
+			}
+			//заполняем
+			for k, v := range innerData {
+				buffer[filepath.Join(info.Name(), k)] = v
+			}
+
+			return buffer, nil
+		}
+
+		//пропускаем все что не луа
+		shards := strings.Split(info.Name(), ".")
+		if shards[len(shards)-1] != "lua" {
+			logrus.Warnf("найден файл неправильного формата %s", info.Name())
+			continue
+		}
+
+		data, err := os.ReadFile(sPath)
+		if err != nil {
+			return nil, err
+		}
+
+		buffer[info.Name()] = data
+	}
+
+	return buffer, nil
+}
+
+// TODO контекст выполнения с таймаутом чтоб не застревать в скрипте
 func (le *LuaEngine) ExecuteScript(scriptPath string, lContext LuaContext) error {
 	logrus.Infof("ExecuteScript path:%s", scriptPath)
+
 	L := NewStateBuilder(le).
 		WithModule(&CacheModule{cache: le.cache}).
 		WithModule(&BotModule{bot: le.bot}).
@@ -84,46 +95,64 @@ func (le *LuaEngine) ExecuteScript(scriptPath string, lContext LuaContext) error
 		Build()
 	defer L.Close()
 
-	// Создаем таблицу для контекста
-	ctx := L.NewTable()
+	//заполняем контекст
+	setLuaContext(L, &lContext)
+
+	// Выполняем скрипт
+	if _, ok := le.scripts[scriptPath]; ok {
+		if err := L.DoString(string(le.scripts[scriptPath])); err != nil {
+			return fmt.Errorf("lua error: %v", err)
+		}
+	} else {
+		//try file
+		script, err := os.ReadFile(filepath.Join(le.BasePath, scriptPath))
+		if err != nil {
+			return fmt.Errorf("error readinq script from file: %v", err)
+		}
+
+		if err := L.DoString(string(script)); err != nil {
+			return fmt.Errorf("lua error: %v", err)
+		}
+
+		le.scripts[scriptPath] = script
+	}
+
+	return nil
+}
+
+func setLuaContext(L *lua.LState, lContext *LuaContext) {
+	data := L.NewTable()
 
 	// Базовые поля
-	L.SetField(ctx, "chat_id", lua.LNumber(lContext.ChatId))
-	L.SetField(ctx, "text", lua.LString(lContext.MessageText))
+	L.SetField(data, "chat_id", lua.LNumber(lContext.ChatId))
+	L.SetField(data, "text", lua.LString(lContext.MessageText))
 
 	// Обработка callback данных
 	cbData := L.NewTable()
 	L.SetField(cbData, "script", lua.LString(lContext.CbData.Script))
 	L.SetField(cbData, "data", lua.LString(lContext.CbData.Data))
-	L.SetField(ctx, "cb_data", cbData)
+	L.SetField(data, "cb_data", cbData)
 
 	// Прокидываем form_data как Lua таблицу
 	if lContext.FormData != nil {
 		formDataTable := convertMapToLuaTable(L, lContext.FormData)
-		L.SetField(ctx, "form_data", formDataTable)
+		L.SetField(data, "form_data", formDataTable)
 	}
 
 	// Прокидываем request_data
 	if lContext.RequestData != nil {
 		reqDataTable := convertMapToLuaTable(L, lContext.RequestData)
-		L.SetField(ctx, "req_data", reqDataTable)
+		L.SetField(data, "req_data", reqDataTable)
 	}
 
 	// Информация о пользователе
 	user := L.NewTable()
 	L.SetField(user, "id", lua.LNumber(lContext.FromId))
 	L.SetField(user, "name", lua.LString(lContext.FromName))
-	L.SetField(ctx, "user", user)
+	L.SetField(data, "user", user)
 
 	// Устанавливаем глобальную переменную ctx
-	L.SetGlobal("ctx", ctx)
-
-	// Выполняем скрипт
-	if err := L.DoFile(path.Join(le.BasePath, scriptPath)); err != nil {
-		return fmt.Errorf("lua error: %v", err)
-	}
-
-	return nil
+	L.SetGlobal("ctx", data)
 }
 
 // Функция для конвертации map[string]interface{} в Lua таблицу

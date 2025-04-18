@@ -56,8 +56,11 @@ func (fw *FormWorker) StartForm(formName string, userID int64, upd *tgbotapi.Upd
 		return fmt.Errorf("form '%s' not found", formName)
 	}
 
+	// проставляем какая у пользователя активная форма
 	fw.buffer.SetString(fw.formKey(userID), formName)
+	// проставляем какая у пользователя активная форма и ее прогресс
 	fw.buffer.SetString(fw.progressKey(userID), "0")
+
 	return fw.sendFormStep(userID, 0, upd)
 }
 
@@ -73,6 +76,7 @@ func (fw *FormWorker) HandleInput(upd *tgbotapi.Update) {
 		userID = upd.CallbackQuery.From.ID
 		input = m.FromCallbackDataToLuaCbData(upd.CallbackQuery.Data).Data
 
+		// удаляем сообщение если это было нажатие кнопки
 		fw.bot.DeleteMsg(upd.CallbackQuery.Message.Chat.ID, upd.CallbackQuery.Message.MessageID)
 	default:
 		return
@@ -99,8 +103,8 @@ func (fw *FormWorker) HandleInput(upd *tgbotapi.Update) {
 		return
 	}
 
-	if upd.Message != nil && input != "" && currentStep.Validation != nil {
-		if !fw.validateInput(*currentStep.Validation, input) {
+	if upd.Message != nil && input != "" {
+		if currentStep.Validation != nil && !fw.validateInput(*currentStep.Validation, input) {
 			fw.sendValidationError(userID)
 			return
 		}
