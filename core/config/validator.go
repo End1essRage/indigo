@@ -35,5 +35,6 @@ func validateKeyboard(kb Keyboard) error {
 
 	return nil
 }
+func validateScripts() {}
 
 func validateMiddleWares() {}

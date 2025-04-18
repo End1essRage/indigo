@@ -1,4 +1,4 @@
-package server
+package handler
 
 import (
 	"fmt"
@@ -21,8 +21,13 @@ import (
 
 //сейчас все крепится на юзер айди, формы в глобал чатах стоит запретить
 
-//Надо улучшить механиз удаления сообщений, записывая их в буфер, стоит создать временные сообщения и сообщения этапа
-//например ошибки валидации надо удалять после переввода пользователем, вопросы наверное тоже стоит удалять автоматически
+// Надо улучшить механиз удаления сообщений, записывая их в буфер, стоит создать временные сообщения и сообщения этапа
+// например ошибки валидации надо удалять после переввода пользователем, вопросы наверное тоже стоит удалять автоматически
+type Buffer interface {
+	GetString(key string) string
+	SetString(key string, val string) error
+	Exists(key string) bool
+}
 
 type FormWorker struct {
 	bot    *b.TgBot
@@ -31,7 +36,7 @@ type FormWorker struct {
 	le     *l.LuaEngine
 }
 
-func NewFormWorker(bot *b.TgBot, buffer Buffer, config *c.Config, le *l.LuaEngine) *FormWorker {
+func New(bot *b.TgBot, buffer Buffer, config *c.Config, le *l.LuaEngine) *FormWorker {
 	return &FormWorker{
 		bot:    bot,
 		buffer: buffer,

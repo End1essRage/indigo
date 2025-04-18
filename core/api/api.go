@@ -19,14 +19,14 @@ type API struct {
 	router   *chi.Mux
 	server   *http.Server
 	le       *lua.LuaEngine
-	config   *config.HTTPConfig
+	config   *config.ApiConfig
 	stopping bool
 	handling bool
 	stopped  chan struct{}
 	mu       sync.Mutex
 }
 
-func New(le *lua.LuaEngine, cfg *config.HTTPConfig) *API {
+func New(le *lua.LuaEngine, cfg *config.ApiConfig) *API {
 	r := chi.NewRouter()
 
 	return &API{

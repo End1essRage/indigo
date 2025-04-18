@@ -1,5 +1,5 @@
 local function handle()
-    log("Скрипт запущен! api_test")
+    log("Скрипт запущен! moddleware")
 end
 
 handle()

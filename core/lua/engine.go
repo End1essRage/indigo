@@ -83,7 +83,45 @@ func LoadScripts(p string) (map[string][]byte, error) {
 	return buffer, nil
 }
 
-// TODO контекст выполнения с таймаутом чтоб не застревать в скрипте
+func (le *LuaEngine) ExecuteScripts(scriptPaths []string, lContext LuaContext) error {
+
+	L := NewStateBuilder(le).
+		WithModule(&CacheModule{cache: le.cache}).
+		WithModule(&BotModule{bot: le.bot}).
+		WithModule(&HttpModule{client: le.http}).
+		WithModule(&StorageModule{storage: le.storage}).
+		Build()
+	defer L.Close()
+
+	//заполняем контекст
+	setLuaContext(L, &lContext)
+
+	// Выполняем скрипт
+	for _, scriptPath := range scriptPaths {
+		if _, ok := le.scripts[scriptPath]; ok {
+			if err := L.DoString(string(le.scripts[scriptPath])); err != nil {
+				return fmt.Errorf("lua error: %v", err)
+			}
+		} else {
+			//TODO убрать это так как обновления скрипта не будет происходить, либо надо реализовать отслеживание
+			//try file
+			script, err := os.ReadFile(filepath.Join(le.BasePath, scriptPath))
+			if err != nil {
+				return fmt.Errorf("error readinq script from file: %v", err)
+			}
+
+			if err := L.DoString(string(script)); err != nil {
+				return fmt.Errorf("lua error: %v", err)
+			}
+
+			// сохраняем если все норм
+			le.scripts[scriptPath] = script
+		}
+	}
+
+	return nil
+}
+
 func (le *LuaEngine) ExecuteScript(scriptPath string, lContext LuaContext) error {
 	logrus.Infof("ExecuteScript path:%s", scriptPath)
 

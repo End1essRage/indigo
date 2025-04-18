@@ -1,25 +1,13 @@
+# приоритет в обработке сообщения: форма -> роль-фильтр -> interceptors -> обработка
 bot:
   mode: "polling"
   allow_group: true
   is_admin: false #админ группы, бот без имени постит там вот это все
   debug: true
+  roles: true
 
-cache:
-  type: "memory" # или "redis"
-  redis:
-    address: "redis:6379"
-    password: ""
-    db: 0
-
-storage:
-  type: "file" # или "mongo"
-  file:
-    path: "./data"
-  mongo:
-    uri: "mongodb://admin:password@mongo:27017"
-    db: "appdb"
-
-http:
+# api
+api:
   address: ":8080"
   endpoints:
     - path: "/test-get"
@@ -47,21 +35,33 @@ http:
         required: false
         source: "header"
   
+# сторонние сервисы
+cache:
+  type: "memory" # или "redis"
+  redis:
+    address: "redis:6379"
+    password: ""
+    db: 0
+
+storage:
+  type: "file" # или "mongo"
+  file:
+    path: "./data"
+  mongo:
+    uri: "mongodb://admin:password@mongo:27017"
+    db: "appdb"
+
 # Запускаются прежде всего
-middlewares:
-  - affects: "all" #all, commands, msg, buttons, media(img,file),regex, url, filter(add filepath)
+interceptors:
+  - affects: "all" #all, commands, text, buttons, media(img,file),regex, url, filter(add filepath)
     scripts:
       - "middleware.lua"
     modules:
-      - "save_user" # save_user, log, idk...
+      - "track_user" # save_user, log, idk...
+  - affects: "all" #all, commands, text, buttons, media(img,file),regex, url, filter(add filepath)
+    modules:
+      - "track_user" # save_user, log, idk...
 
-#сделать ролевое ограничение, роли зашивать как тг логины в env
-
-#настройка модулей
-modules:
-  - name: "save_user"
-    cfg:
-      table: "customers"
 
 #возможность переключиться на пользовательский режим хранение в ключе кэша
 commands:
@@ -81,6 +81,15 @@ commands:
     reply: "sosal"
   - name: "register"
     form: "user_registration"
+
+#сделать ролевое ограничение, роли зашивать как тг логины в env
+
+#настройка модулей
+modules:
+  - name: "save_user"
+    cfg:
+      table: "customers"
+
 
 #добавить формы через миниапп
 
@@ -110,7 +119,6 @@ forms:
         keyboard: "yes_no"
 
     script: "user_regestration.lua"
-
 
 #todo Переделать на редактирование сообщения вместо удаления
 #создание клавиатур
