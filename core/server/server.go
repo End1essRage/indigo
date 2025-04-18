@@ -46,7 +46,7 @@ func NewServer(le *l.LuaEngine, bot *b.TgBot, config *c.Config, buffer Buffer) *
 		le:           le,
 		bot:          bot,
 		config:       config,
-		formWorker:   h.New(bot, buffer, config, le),
+		formWorker:   h.NewFormWorker(bot, buffer, config, le),
 		stopped:      make(chan struct{}),
 		interceptors: registerInterceptors(config.Interceptors),
 	}

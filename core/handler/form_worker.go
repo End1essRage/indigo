@@ -36,7 +36,7 @@ type FormWorker struct {
 	le     *l.LuaEngine
 }
 
-func New(bot *b.TgBot, buffer Buffer, config *c.Config, le *l.LuaEngine) *FormWorker {
+func NewFormWorker(bot *b.TgBot, buffer Buffer, config *c.Config, le *l.LuaEngine) *FormWorker {
 	return &FormWorker{
 		bot:    bot,
 		buffer: buffer,
