@@ -8,7 +8,10 @@ import (
 )
 
 type BotConfig struct {
-	Mode string `yaml:"mode"`
+	Mode       string `yaml:"mode"`
+	AllowGroup bool   `yaml:"allow_group"`
+	IsAdmin    bool   `yaml:"is_admin"`
+	Debug      bool   `yaml:"debug"`
 }
 
 type Command struct {
@@ -18,6 +21,7 @@ type Command struct {
 	Reply       *string `yaml:"reply,omitempty"`
 	Keyboard    *string `yaml:"keyboard,omitempty"`
 	Form        *string `yaml:"form,omitempty"`
+	Role        *string `yaml:"role,omitempty"`
 }
 
 type Button struct {
@@ -37,13 +41,15 @@ type Keyboard struct {
 }
 
 type YamlConfig struct {
-	Bot       BotConfig     `yaml:"bot"`
-	Cache     CacheConfig   `yaml:"cache"`
-	Storage   StorageConfig `yaml:"storage"`
-	HTTP      *HTTPConfig   `yaml:"http,omitempty"`
-	Commands  []Command     `yaml:"commands"`
-	Keyboards []Keyboard    `yaml:"keyboards,omitempty"`
-	Forms     []Form        `yaml:"forms,omitempty"`
+	Bot         BotConfig      `yaml:"bot"`
+	Cache       CacheConfig    `yaml:"cache"`
+	Storage     StorageConfig  `yaml:"storage"`
+	HTTP        *HTTPConfig    `yaml:"http,omitempty"`
+	Commands    []Command      `yaml:"commands"`
+	Keyboards   []Keyboard     `yaml:"keyboards,omitempty"`
+	Forms       []Form         `yaml:"forms,omitempty"`
+	Middlewares []Middleware   `yaml:"middlewares,omitempty"`
+	Modules     []ModuleConfig `yaml:"modules,omitempty"`
 }
 
 type CacheConfig struct {
@@ -107,13 +113,37 @@ type Field struct {
 }
 
 type Config struct {
-	Bot       BotConfig
-	HTTP      *HTTPConfig
-	Cache     CacheConfig
-	Storage   StorageConfig
-	Commands  map[string]*Command
-	Keyboards map[string]*Keyboard
-	Forms     map[string]*Form
+	Bot         BotConfig
+	HTTP        *HTTPConfig
+	Cache       CacheConfig
+	Storage     StorageConfig
+	Commands    map[string]*Command
+	Keyboards   map[string]*Keyboard
+	Forms       map[string]*Form
+	Middlewares []Middleware
+	Modules     []ModuleConfig
+}
+
+type AffectMode string
+
+const AffectMode_All = "all"
+const AffectMode_Commands = "commands"
+const AffectMode_Msg = "msg"
+const AffectMode_Buttons = "buttons"
+const AffectMode_Media = "media"
+const AffectMode_Regex = "regex"
+const AffectMode_Url = "url"
+const AffectMode_Filter = "filter"
+
+type Middleware struct {
+	Affects AffectMode `yaml:"affects"`
+	Scripts []string   `yaml:"scripts,omitempty"`
+	Modules []string   `yaml:"modules,omitempty"`
+}
+
+type ModuleConfig struct {
+	Name string            `yaml:"name"`
+	Cfg  map[string]string `yaml:"cfg"`
 }
 
 type ValidationErr error
@@ -142,6 +172,8 @@ func LoadConfig(path string, validate bool) (*Config, error) {
 	config.HTTP = yConfig.HTTP
 	config.Storage = yConfig.Storage
 	config.Cache = yConfig.Cache
+	config.Middlewares = yConfig.Middlewares
+	config.Modules = yConfig.Modules
 
 	//fill commands
 	config.Commands = make(map[string]*Command)

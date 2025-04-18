@@ -1,5 +1,8 @@
 bot:
   mode: "polling"
+  allow_group: true
+  is_admin: false #админ группы, бот без имени постит там вот это все
+  debug: true
 
 cache:
   type: "memory" # или "redis"
@@ -44,13 +47,32 @@ http:
         required: false
         source: "header"
   
+# Запускаются прежде всего
+middlewares:
+  - affects: "all" #all, commands, msg, buttons, media(img,file),regex, url, filter(add filepath)
+    scripts:
+      - "middleware.lua"
+    modules:
+      - "save_user" # save_user, log, idk...
+
+#сделать ролевое ограничение, роли зашивать как тг логины в env
+
+#настройка модулей
+modules:
+  - name: "save_user"
+    cfg:
+      table: "customers"
+
+#возможность переключиться на пользовательский режим хранение в ключе кэша
 commands:
   - name: "start"
     description: "Приветствие"
     script: "welcome.lua"
+    role: "all" #admin, <roleName>,<roleName> table is admins anyway [name - role] use redis aka db
   - name: "menu"
     description: "тест меню"
     keyboard: "main_menu"
+    role: "admin" # придумать отбивку
   - name: "menu2"
     description: "тест меню"
     script: "keyboard_second_menu.lua"
@@ -60,6 +82,10 @@ commands:
   - name: "register"
     form: "user_registration"
 
+#добавить формы через миниапп
+
+#формы не работают в общем чате
+#todo пересылка в лс при попытке вызвать форму в общем чате
 forms:
   - name: "user_registration"
     description: "Регистрация пользователя"
@@ -69,18 +95,24 @@ forms:
         validation:
           type: "string"
           min_length: 2
+
       - field: "user_age"
         message: "Выберите возрастную группу:"
         keyboard: "age_groups"
+
       - field: "user_email"
         message: "Введите ваш email:"
         validation:
           type: "email"
+
       - field: "newsletter"
         message: "Подписаться на рассылку?"
         keyboard: "yes_no"
+
     script: "user_regestration.lua"
 
+
+#todo Переделать на редактирование сообщения вместо удаления
 #создание клавиатур
 keyboards:
   - name: "main_menu"
@@ -97,6 +129,7 @@ keyboards:
             script: "btn3_handler.lua"
           - text: "Кнопка 4"
             data: "customData btn4"
+            
   - name: "age_groups"
     message: "Выберите возраст:"
     buttons:

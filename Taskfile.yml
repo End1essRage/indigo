@@ -52,7 +52,6 @@ tasks:
       - ./{{.BINARY_NAME}}
     env:
       BOT_TOKEN: "{{.BOT_TOKEN}}"
-      SCRIPTS_DIR: "{{.SCRIPTS_DIR}}"
 
   #запуск контейнера
   run:
