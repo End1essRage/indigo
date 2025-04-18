@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
+	"github.com/end1essrage/indigo-core/helpers"
 	"github.com/sirupsen/logrus"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -22,65 +22,13 @@ type LuaEngine struct {
 
 func NewLuaEngine(b Bot, c Cache, h HttpClient, s Storage, path string) *LuaEngine {
 	engine := &LuaEngine{bot: b, cache: c, http: h, storage: s, BasePath: path}
-	buffer, err := LoadScripts(path)
+	spy, err := helpers.NewSpy(path) //LoadScripts(path)
 	if err != nil {
 		logrus.Fatalf("ошибка загрузки скриптов %v", err)
 	}
 
-	engine.scripts = buffer
+	engine.scripts = spy.Data
 	return engine
-}
-
-func LoadScripts(p string) (map[string][]byte, error) {
-	buffer := make(map[string][]byte)
-
-	dir, err := os.ReadDir(p)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, f := range dir {
-		info, err := f.Info()
-		if err != nil {
-			return nil, err
-		}
-
-		if _, exists := buffer[info.Name()]; exists {
-			return nil, fmt.Errorf("name conflict between file and directory: %s", info.Name())
-		}
-
-		sPath := filepath.Join(p, info.Name())
-		//рекурсивно обрабатываем
-		if info.IsDir() {
-			logrus.Info("зашел в подпапку")
-			innerData, err := LoadScripts(sPath)
-			if err != nil {
-				return nil, err
-			}
-			//заполняем
-			for k, v := range innerData {
-				buffer[filepath.Join(info.Name(), k)] = v
-			}
-
-			return buffer, nil
-		}
-
-		//пропускаем все что не луа
-		shards := strings.Split(info.Name(), ".")
-		if shards[len(shards)-1] != "lua" {
-			logrus.Warnf("найден файл неправильного формата %s", info.Name())
-			continue
-		}
-
-		data, err := os.ReadFile(sPath)
-		if err != nil {
-			return nil, err
-		}
-
-		buffer[info.Name()] = data
-	}
-
-	return buffer, nil
 }
 
 func (le *LuaEngine) ExecuteScripts(scriptPaths []string, lContext LuaContext) error {
