@@ -30,7 +30,7 @@ func NewInMemoryCache(ttl time.Duration) *InMemoryCache {
 }
 
 func (c *InMemoryCache) cleanupWorker() {
-	ticker := time.NewTicker(1 * time.Minute)
+	ticker := time.NewTicker(c.ttl)
 	defer ticker.Stop()
 
 	for {

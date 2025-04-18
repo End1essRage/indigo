@@ -7,8 +7,13 @@ import (
 	yaml "github.com/goccy/go-yaml"
 )
 
+// BOT
 type BotConfig struct {
-	Mode string `yaml:"mode"`
+	Mode       string `yaml:"mode"`
+	AllowGroup bool   `yaml:"allow_group"`
+	IsAdmin    bool   `yaml:"is_admin"`
+	Debug      bool   `yaml:"debug"`
+	Roles      bool   `yaml:"roles"`
 }
 
 type Command struct {
@@ -18,6 +23,7 @@ type Command struct {
 	Reply       *string `yaml:"reply,omitempty"`
 	Keyboard    *string `yaml:"keyboard,omitempty"`
 	Form        *string `yaml:"form,omitempty"`
+	Role        *string `yaml:"role,omitempty"`
 }
 
 type Button struct {
@@ -36,52 +42,8 @@ type Keyboard struct {
 	Buttons *[]KeyboardRow `yaml:"buttons,omitempty"`
 }
 
-type YamlConfig struct {
-	Bot       BotConfig     `yaml:"bot"`
-	Cache     CacheConfig   `yaml:"cache"`
-	Storage   StorageConfig `yaml:"storage"`
-	HTTP      *HTTPConfig   `yaml:"http,omitempty"`
-	Commands  []Command     `yaml:"commands"`
-	Keyboards []Keyboard    `yaml:"keyboards,omitempty"`
-	Forms     []Form        `yaml:"forms,omitempty"`
-}
-
-type CacheConfig struct {
-	Type  string `yaml:"type"`
-	Redis *struct {
-		Address  string `yaml:"address"`
-		Password string `yaml:"password"`
-		DB       int    `yaml:"db"`
-	} `yaml:"redis,omitempty"`
-}
-
-type Form struct {
-	Name        string      `yaml:"name"`
-	Description *string     `yaml:"description,omitempty"`
-	Stages      []FormStage `yaml:"stages"`
-	Script      string      `yaml:"script"`
-}
-
-type FormStage struct {
-	Field      string          `yaml:"field"`
-	Message    string          `yaml:"message"`
-	Validation *map[string]any `yaml:"validation,omitempty"`
-	Keyboard   *string         `yaml:"keyboard,omitempty"`
-	Script     *string         `yaml:"script,omitempty"`
-}
-
-type StorageConfig struct {
-	Type string `yaml:"type"`
-	File *struct {
-		Path string `yaml:"path"`
-	} `yaml:"file,omitempty"`
-	Mongo *struct {
-		Uri string `yaml:"uri"`
-		Db  string `yaml:"db"`
-	} `yaml:"mongo,omitempty"`
-}
-
-type HTTPConfig struct {
+// Api
+type ApiConfig struct {
 	Address   string     `yaml:"address"`
 	Endpoints []Endpoint `yaml:"endpoints"`
 	Schemes   []Scheme   `yaml:"schemes"`
@@ -106,14 +68,92 @@ type Field struct {
 	Source   string `yaml:"source"` // body, query, header
 }
 
+// STRUCTUAL
+type Form struct {
+	Name        string      `yaml:"name"`
+	Description *string     `yaml:"description,omitempty"`
+	Stages      []FormStage `yaml:"stages"`
+	Script      string      `yaml:"script"`
+}
+
+type FormStage struct {
+	Field      string          `yaml:"field"`
+	Message    string          `yaml:"message"`
+	Validation *map[string]any `yaml:"validation,omitempty"`
+	Keyboard   *string         `yaml:"keyboard,omitempty"`
+	Script     *string         `yaml:"script,omitempty"`
+}
+
+// DATA
+type CacheConfig struct {
+	Type  string `yaml:"type"`
+	Redis *struct {
+		Address  string `yaml:"address"`
+		Password string `yaml:"password"`
+		DB       int    `yaml:"db"`
+	} `yaml:"redis,omitempty"`
+}
+
+type StorageConfig struct {
+	Type string `yaml:"type"`
+	File *struct {
+		Path string `yaml:"path"`
+	} `yaml:"file,omitempty"`
+	Mongo *struct {
+		Uri string `yaml:"uri"`
+		Db  string `yaml:"db"`
+	} `yaml:"mongo,omitempty"`
+}
+
+// HANDLING MIDLLEWARES
+type AffectMode string
+
+const AffectMode_All AffectMode = "all"
+const AffectMode_Commands AffectMode = "commands"
+const AffectMode_Text AffectMode = "text"
+const AffectMode_Buttons AffectMode = "buttons"
+const AffectMode_Media AffectMode = "media"
+const AffectMode_Regex AffectMode = "regex"
+const AffectMode_Url AffectMode = "url"
+const AffectMode_Filter AffectMode = "filter"
+
+type Module string
+
+const TRACK_USER Module = "track_user"
+
+type Interceptor struct {
+	Affects AffectMode `yaml:"affects"`
+	Scripts []string   `yaml:"scripts,omitempty"`
+	Modules []string   `yaml:"modules,omitempty"`
+}
+
+type ModuleConfig struct {
+	Name Module            `yaml:"name"`
+	Cfg  map[string]string `yaml:"cfg"`
+}
+
+type YamlConfig struct {
+	Bot          BotConfig      `yaml:"bot"`
+	Cache        CacheConfig    `yaml:"cache"`
+	Storage      StorageConfig  `yaml:"storage"`
+	Api          *ApiConfig     `yaml:"api,omitempty"`
+	Commands     []Command      `yaml:"commands"`
+	Keyboards    []Keyboard     `yaml:"keyboards,omitempty"`
+	Forms        []Form         `yaml:"forms,omitempty"`
+	Interceptors []Interceptor  `yaml:"interceptors,omitempty"`
+	Modules      []ModuleConfig `yaml:"modules,omitempty"`
+}
+
 type Config struct {
-	Bot       BotConfig
-	HTTP      *HTTPConfig
-	Cache     CacheConfig
-	Storage   StorageConfig
-	Commands  map[string]*Command
-	Keyboards map[string]*Keyboard
-	Forms     map[string]*Form
+	Bot          BotConfig
+	HTTP         *ApiConfig
+	Cache        CacheConfig
+	Storage      StorageConfig
+	Commands     map[string]*Command
+	Keyboards    map[string]*Keyboard
+	Forms        map[string]*Form
+	Interceptors []Interceptor
+	Modules      []ModuleConfig
 }
 
 type ValidationErr error
@@ -139,9 +179,11 @@ func LoadConfig(path string, validate bool) (*Config, error) {
 
 	var config Config
 	config.Bot = yConfig.Bot
-	config.HTTP = yConfig.HTTP
+	config.HTTP = yConfig.Api
 	config.Storage = yConfig.Storage
 	config.Cache = yConfig.Cache
+	config.Interceptors = yConfig.Interceptors
+	config.Modules = yConfig.Modules
 
 	//fill commands
 	config.Commands = make(map[string]*Command)

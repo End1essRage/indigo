@@ -1,22 +1,13 @@
+# приоритет в обработке сообщения: форма -> роль-фильтр -> interceptors -> обработка
 bot:
   mode: "polling"
+  allow_group: true
+  is_admin: false #админ группы, бот без имени постит там вот это все
+  debug: true
+  roles: true
 
-cache:
-  type: "memory" # или "redis"
-  redis:
-    address: "redis:6379"
-    password: ""
-    db: 0
-
-storage:
-  type: "file" # или "mongo"
-  file:
-    path: "./data"
-  mongo:
-    uri: "mongodb://admin:password@mongo:27017"
-    db: "appdb"
-
-http:
+# api
+api:
   address: ":8080"
   endpoints:
     - path: "/test-get"
@@ -44,13 +35,44 @@ http:
         required: false
         source: "header"
   
+# сторонние сервисы
+cache:
+  type: "memory" # или "redis"
+  redis:
+    address: "redis:6379"
+    password: ""
+    db: 0
+
+storage:
+  type: "file" # или "mongo"
+  file:
+    path: "./data"
+  mongo:
+    uri: "mongodb://admin:password@mongo:27017"
+    db: "appdb"
+
+# Запускаются прежде всего
+interceptors:
+  - affects: "all" #all, commands, text, buttons, media(img,file),regex, url, filter(add filepath)
+    scripts:
+      - "middleware.lua"
+    modules:
+      - "track_user" # save_user, log, idk...
+  - affects: "all" #all, commands, text, buttons, media(img,file),regex, url, filter(add filepath)
+    modules:
+      - "track_user" # save_user, log, idk...
+
+
+#возможность переключиться на пользовательский режим хранение в ключе кэша
 commands:
   - name: "start"
     description: "Приветствие"
     script: "welcome.lua"
+    role: "all" #admin, <roleName>,<roleName> table is admins anyway [name - role] use redis aka db
   - name: "menu"
     description: "тест меню"
     keyboard: "main_menu"
+    role: "admin" # придумать отбивку
   - name: "menu2"
     description: "тест меню"
     script: "keyboard_second_menu.lua"
@@ -60,6 +82,19 @@ commands:
   - name: "register"
     form: "user_registration"
 
+#сделать ролевое ограничение, роли зашивать как тг логины в env
+
+#настройка модулей
+modules:
+  - name: "save_user"
+    cfg:
+      table: "customers"
+
+
+#добавить формы через миниапп
+
+#формы не работают в общем чате
+#todo пересылка в лс при попытке вызвать форму в общем чате
 forms:
   - name: "user_registration"
     description: "Регистрация пользователя"
@@ -69,18 +104,23 @@ forms:
         validation:
           type: "string"
           min_length: 2
+
       - field: "user_age"
         message: "Выберите возрастную группу:"
         keyboard: "age_groups"
+
       - field: "user_email"
         message: "Введите ваш email:"
         validation:
           type: "email"
+
       - field: "newsletter"
         message: "Подписаться на рассылку?"
         keyboard: "yes_no"
+
     script: "user_regestration.lua"
 
+#todo Переделать на редактирование сообщения вместо удаления
 #создание клавиатур
 keyboards:
   - name: "main_menu"
@@ -97,6 +137,7 @@ keyboards:
             script: "btn3_handler.lua"
           - text: "Кнопка 4"
             data: "customData btn4"
+            
   - name: "age_groups"
     message: "Выберите возраст:"
     buttons:

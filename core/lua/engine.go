@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
+	"github.com/end1essrage/indigo-core/helpers"
 	"github.com/sirupsen/logrus"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -22,68 +22,54 @@ type LuaEngine struct {
 
 func NewLuaEngine(b Bot, c Cache, h HttpClient, s Storage, path string) *LuaEngine {
 	engine := &LuaEngine{bot: b, cache: c, http: h, storage: s, BasePath: path}
-	buffer, err := LoadScripts(path)
+	spy, err := helpers.NewSpy(path) //LoadScripts(path)
 	if err != nil {
 		logrus.Fatalf("ошибка загрузки скриптов %v", err)
 	}
 
-	engine.scripts = buffer
+	engine.scripts = spy.Data
 	return engine
 }
 
-func LoadScripts(p string) (map[string][]byte, error) {
-	buffer := make(map[string][]byte)
+func (le *LuaEngine) ExecuteScripts(scriptPaths []string, lContext LuaContext) error {
 
-	dir, err := os.ReadDir(p)
-	if err != nil {
-		return nil, err
-	}
+	L := NewStateBuilder(le).
+		WithModule(&CacheModule{cache: le.cache}).
+		WithModule(&BotModule{bot: le.bot}).
+		WithModule(&HttpModule{client: le.http}).
+		WithModule(&StorageModule{storage: le.storage}).
+		Build()
+	defer L.Close()
 
-	for _, f := range dir {
-		info, err := f.Info()
-		if err != nil {
-			return nil, err
-		}
+	//заполняем контекст
+	setLuaContext(L, &lContext)
 
-		if _, exists := buffer[info.Name()]; exists {
-			return nil, fmt.Errorf("name conflict between file and directory: %s", info.Name())
-		}
-
-		sPath := filepath.Join(p, info.Name())
-		//рекурсивно обрабатываем
-		if info.IsDir() {
-			logrus.Info("зашел в подпапку")
-			innerData, err := LoadScripts(sPath)
+	// Выполняем скрипт
+	for _, scriptPath := range scriptPaths {
+		if _, ok := le.scripts[scriptPath]; ok {
+			if err := L.DoString(string(le.scripts[scriptPath])); err != nil {
+				return fmt.Errorf("lua error: %v", err)
+			}
+		} else {
+			//TODO убрать это так как обновления скрипта не будет происходить, либо надо реализовать отслеживание
+			//try file
+			script, err := os.ReadFile(filepath.Join(le.BasePath, scriptPath))
 			if err != nil {
-				return nil, err
-			}
-			//заполняем
-			for k, v := range innerData {
-				buffer[filepath.Join(info.Name(), k)] = v
+				return fmt.Errorf("error readinq script from file: %v", err)
 			}
 
-			return buffer, nil
-		}
+			if err := L.DoString(string(script)); err != nil {
+				return fmt.Errorf("lua error: %v", err)
+			}
 
-		//пропускаем все что не луа
-		shards := strings.Split(info.Name(), ".")
-		if shards[len(shards)-1] != "lua" {
-			logrus.Warnf("найден файл неправильного формата %s", info.Name())
-			continue
+			// сохраняем если все норм
+			le.scripts[scriptPath] = script
 		}
-
-		data, err := os.ReadFile(sPath)
-		if err != nil {
-			return nil, err
-		}
-
-		buffer[info.Name()] = data
 	}
 
-	return buffer, nil
+	return nil
 }
 
-// TODO контекст выполнения с таймаутом чтоб не застревать в скрипте
 func (le *LuaEngine) ExecuteScript(scriptPath string, lContext LuaContext) error {
 	logrus.Infof("ExecuteScript path:%s", scriptPath)
 
