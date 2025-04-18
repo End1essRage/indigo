@@ -120,23 +120,35 @@ func (s *Server) HandleUpdate(update *tgbotapi.Update) {
 	}
 
 	//перехватчики
+	wg := &sync.WaitGroup{}
+
 	if len(s.interceptors) > 0 {
 		for k, v := range s.interceptors {
 			switch k {
 			case c.AffectMode_All:
 				for _, f := range v {
-					f.Use(update)
+					wg.Add(1)
+					go func() {
+						defer wg.Done()
+						f.Use(update)
+					}()
 				}
 			case c.AffectMode_Text:
 				if update.Message.IsCommand() || update.CallbackQuery != nil {
 					continue
 				}
 				for _, f := range v {
-					f.Use(update)
+					wg.Add(1)
+					go func() {
+						defer wg.Done()
+						f.Use(update)
+					}()
 				}
 			}
 		}
 	}
+
+	wg.Wait()
 
 	// Кнопки
 	if update.CallbackQuery != nil {
