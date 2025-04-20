@@ -2,10 +2,9 @@ package lua
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/end1essrage/indigo-core/helpers"
+	"github.com/end1essrage/indigo-core/secret"
 	"github.com/sirupsen/logrus"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -17,11 +16,12 @@ type LuaEngine struct {
 	http     HttpClient
 	storage  Storage
 	BasePath string
+	Secret   *secret.SecretsOperator
 	scripts  map[string][]byte
 }
 
-func NewLuaEngine(b Bot, c Cache, h HttpClient, s Storage, path string) *LuaEngine {
-	engine := &LuaEngine{bot: b, cache: c, http: h, storage: s, BasePath: path}
+func NewLuaEngine(b Bot, c Cache, h HttpClient, s Storage, path string, sec *secret.SecretsOperator) *LuaEngine {
+	engine := &LuaEngine{bot: b, cache: c, http: h, storage: s, BasePath: path, Secret: sec}
 	spy, err := helpers.NewSpy(path) //LoadScripts(path)
 	if err != nil {
 		logrus.Fatalf("ошибка загрузки скриптов %v", err)
@@ -29,45 +29,6 @@ func NewLuaEngine(b Bot, c Cache, h HttpClient, s Storage, path string) *LuaEngi
 
 	engine.scripts = spy.Data
 	return engine
-}
-
-func (le *LuaEngine) ExecuteScripts(scriptPaths []string, lContext LuaContext) error {
-
-	L := NewStateBuilder(le).
-		WithModule(&CacheModule{cache: le.cache}).
-		WithModule(&BotModule{bot: le.bot}).
-		WithModule(&HttpModule{client: le.http}).
-		WithModule(&StorageModule{storage: le.storage}).
-		Build()
-	defer L.Close()
-
-	//заполняем контекст
-	setLuaContext(L, &lContext)
-
-	// Выполняем скрипт
-	for _, scriptPath := range scriptPaths {
-		if _, ok := le.scripts[scriptPath]; ok {
-			if err := L.DoString(string(le.scripts[scriptPath])); err != nil {
-				return fmt.Errorf("lua error: %v", err)
-			}
-		} else {
-			//TODO убрать это так как обновления скрипта не будет происходить, либо надо реализовать отслеживание
-			//try file
-			script, err := os.ReadFile(filepath.Join(le.BasePath, scriptPath))
-			if err != nil {
-				return fmt.Errorf("error readinq script from file: %v", err)
-			}
-
-			if err := L.DoString(string(script)); err != nil {
-				return fmt.Errorf("lua error: %v", err)
-			}
-
-			// сохраняем если все норм
-			le.scripts[scriptPath] = script
-		}
-	}
-
-	return nil
 }
 
 func (le *LuaEngine) ExecuteScript(scriptPath string, lContext LuaContext) error {
@@ -90,17 +51,7 @@ func (le *LuaEngine) ExecuteScript(scriptPath string, lContext LuaContext) error
 			return fmt.Errorf("lua error: %v", err)
 		}
 	} else {
-		//try file
-		script, err := os.ReadFile(filepath.Join(le.BasePath, scriptPath))
-		if err != nil {
-			return fmt.Errorf("error readinq script from file: %v", err)
-		}
-
-		if err := L.DoString(string(script)); err != nil {
-			return fmt.Errorf("lua error: %v", err)
-		}
-
-		le.scripts[scriptPath] = script
+		return fmt.Errorf("script didnt found %s", scriptPath)
 	}
 
 	return nil
