@@ -36,7 +36,7 @@ const (
 
 func init() {
 	logrus.SetFormatter(&logrus.TextFormatter{})
-	logrus.SetLevel(logrus.DebugLevel)
+
 	//parse env
 	if err := godotenv.Load(); err != nil {
 		logrus.Warning("error while reading environment", err.Error())
@@ -75,6 +75,13 @@ func main() {
 		panic("no token provided")
 	}
 
+	//глубина логирования
+	if config.Bot.Debug {
+		logrus.SetLevel(logrus.DebugLevel)
+	} else {
+		logrus.SetLevel(logrus.InfoLevel)
+	}
+
 	// кастомные секреты
 	sec := secret.New(config.Secrets)
 
@@ -84,7 +91,7 @@ func main() {
 		logrus.Fatal(err)
 	}
 
-	tBot.Debug = false
+	tBot.Debug = config.Bot.Debug
 	logrus.Infof("Authorized on account %s", tBot.Self.UserName)
 
 	//обертка над тг ботом

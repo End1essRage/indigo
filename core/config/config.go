@@ -11,6 +11,7 @@ type YamlConfig struct {
 	Bot          BotConfig      `yaml:"bot"`
 	Cache        CacheConfig    `yaml:"cache"`
 	Storage      StorageConfig  `yaml:"storage"`
+	Media        MediaConfig    `yaml:"media"`
 	Api          *ApiConfig     `yaml:"api,omitempty"`
 	Commands     []Command      `yaml:"commands"`
 	Keyboards    []Keyboard     `yaml:"keyboards,omitempty"`
@@ -31,6 +32,7 @@ type Config struct {
 	Interceptors []Interceptor
 	Modules      []ModuleConfig
 	Secrets      []Secret
+	Media        MediaConfig
 }
 
 type ValidationErr error
@@ -62,6 +64,7 @@ func LoadConfig(path string, validate bool) (*Config, error) {
 	config.Interceptors = yConfig.Interceptors
 	config.Modules = yConfig.Modules
 	config.Secrets = yConfig.Secrets
+	config.Media = yConfig.Media
 
 	//fill commands
 	config.Commands = make(map[string]*Command)
@@ -82,6 +85,11 @@ func LoadConfig(path string, validate bool) (*Config, error) {
 	}
 
 	return &config, nil
+}
+
+// MEDIA
+type MediaConfig struct {
+	Type string `yaml:"type"`
 }
 
 // SECRETS

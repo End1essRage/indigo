@@ -14,6 +14,10 @@ secrets:
   - name: "REDIS_PWD" 
   - name: "SOME_SECRET"   
 
+# media
+media:
+  type: "local" # яндекс дикс, гугл диск, s3 minio?
+
 # api
 api:
   address: ":8080"
@@ -91,6 +95,8 @@ commands:
     reply: "sosal"
   - name: "register"
     form: "user_registration"
+  - name: "photo"
+    form: "photo_test"
 
 #сделать ролевое ограничение, роли зашивать как тг логины в env
 
@@ -129,6 +135,16 @@ forms:
         keyboard: "yes_no"
 
     script: "user_regestration.lua"
+
+  - name: "photo_test"
+    description: "тест работы с фото"
+    stages:
+      - field: "photo"
+        message: "пришлите фото"
+        validation:
+          type: "photo"
+
+    script: "photo.lua"
 
 #todo Переделать на редактирование сообщения вместо удаления
 #создание клавиатур
