@@ -1,7 +1,9 @@
 package lua
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	"github.com/end1essrage/indigo-core/helpers"
 	"github.com/end1essrage/indigo-core/secret"
@@ -44,6 +46,12 @@ func (le *LuaEngine) ExecuteScript(scriptPath string, lContext LuaContext) error
 
 	//заполняем контекст
 	setLuaContext(L, &lContext)
+
+	//ограничиваем по времени выполнения
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	L.SetContext(ctx)
 
 	// Выполняем скрипт
 	if _, ok := le.scripts[scriptPath]; ok {

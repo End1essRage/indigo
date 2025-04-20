@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -29,7 +30,9 @@ func NewMongoStorage(uri, database string) (*MongoStorage, error) {
 //вот тут надо не принимать контекст а создавать с таймаутом ну или оборачивать в таймаут
 
 func (ms *MongoStorage) Save(entityType string, id string, data interface{}) error {
-	ctx := context.TODO()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	coll := ms.client.Database(ms.database).Collection(string(entityType))
 
 	_, err := coll.UpdateOne(ctx,
@@ -41,7 +44,9 @@ func (ms *MongoStorage) Save(entityType string, id string, data interface{}) err
 }
 
 func (ms *MongoStorage) Load(entityType string, id string, result interface{}) error {
-	ctx := context.TODO()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	coll := ms.client.Database(ms.database).Collection(string(entityType))
 
 	return coll.FindOne(ctx, bson.M{"_id": id}).Decode(result)
