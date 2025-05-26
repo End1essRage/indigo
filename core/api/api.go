@@ -58,10 +58,14 @@ func (a *API) Start() error {
 
 func (a *API) registerHandlers() {
 	for _, endpoint := range a.config.Endpoints {
-		scheme := a.findScheme(endpoint.Scheme)
-		if scheme == nil {
-			logrus.Errorf("Scheme %s not found for endpoint %s", endpoint.Scheme, endpoint.Path)
-			continue
+		var scheme *config.Scheme
+		if endpoint.Scheme != nil {
+			scheme = a.findScheme(*endpoint.Scheme)
+
+			if scheme == nil {
+				logrus.Errorf("Scheme %s not found for endpoint %s", *endpoint.Scheme, endpoint.Path)
+				continue
+			}
 		}
 
 		handler := a.createEndpointHandler(endpoint, scheme)
@@ -100,6 +104,9 @@ func (a *API) createEndpointHandler(endpoint config.Endpoint, scheme *config.Sch
 			return
 		}
 
+		logrus.Debugf("scheme is %+v", scheme)
+		logrus.Debugf("req data is %+v", data)
+
 		// Создаем Lua контекст
 		ctx := lua.LuaContext{
 			RequestData: data,
@@ -119,6 +126,27 @@ func (a *API) createEndpointHandler(endpoint config.Endpoint, scheme *config.Sch
 
 func (a *API) collectRequestData(r *http.Request, scheme *config.Scheme) (map[string]interface{}, error) {
 	data := make(map[string]interface{})
+	var bodyParsed bool
+	var body map[string]interface{}
+	var parseErr error
+
+	if scheme == nil {
+		return data, nil
+	}
+
+	// Предварительный парсинг тела если есть body-поля
+	for _, field := range scheme.Fields {
+		if field.Source == "body" {
+			if !bodyParsed {
+				bodyParsed = true
+				parseErr = json.NewDecoder(r.Body).Decode(&body)
+				if parseErr != nil {
+					return nil, fmt.Errorf("invalid body format: %v", parseErr)
+				}
+			}
+			break
+		}
+	}
 
 	for _, field := range scheme.Fields {
 		var value interface{}
@@ -130,7 +158,10 @@ func (a *API) collectRequestData(r *http.Request, scheme *config.Scheme) (map[st
 		case "header":
 			value = r.Header.Get(field.Name)
 		case "body":
-			value, err = a.parseBodyField(r, field)
+			if parseErr != nil {
+				return nil, parseErr
+			}
+			value, err = a.getBodyField(body, field)
 		default:
 			value = r.URL.Query().Get(field.Name)
 		}
@@ -149,17 +180,11 @@ func (a *API) collectRequestData(r *http.Request, scheme *config.Scheme) (map[st
 	return data, nil
 }
 
-func (a *API) parseBodyField(r *http.Request, field config.Field) (interface{}, error) {
-	var body map[string]interface{}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		return nil, err
-	}
-
+func (a *API) getBodyField(body map[string]interface{}, field config.Field) (interface{}, error) {
 	value, exists := body[field.Name]
 	if !exists && field.Required {
 		return nil, fmt.Errorf("missing body field: %s", field.Name)
 	}
-
 	return value, nil
 }
 

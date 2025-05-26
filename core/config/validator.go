@@ -7,6 +7,10 @@ import (
 )
 
 func Validate(config *YamlConfig) (bool, string) {
+	if err := validateStorage(&config.Storage); err != nil {
+		return false, fmt.Sprintf("ошибка валидации Storage %v", err)
+	}
+
 	//параллельно?
 	for _, k := range config.Keyboards {
 		logrus.Debugf("Validating %s", k.Name)
@@ -35,6 +39,23 @@ func validateKeyboard(kb Keyboard) error {
 
 	return nil
 }
+
+func validateStorage(config *StorageConfig) error {
+	if config.Type == Storage_File {
+		if config.File == nil {
+			return fmt.Errorf("Заполните конфигурацию для файлового хранилища")
+		}
+	}
+
+	if config.Type == Storage_Mongo {
+		if config.Mongo == nil {
+			return fmt.Errorf("Заполните конфигурацию для монго дб")
+		}
+	}
+
+	return nil
+}
+
 func validateScripts() {}
 
 func validateMiddleWares() {}

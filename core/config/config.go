@@ -140,10 +140,10 @@ type ApiConfig struct {
 }
 
 type Endpoint struct {
-	Path   string `yaml:"path"`
-	Method string `yaml:"method"`
-	Scheme string `yaml:"scheme"`
-	Script string `yaml:"script"`
+	Path   string  `yaml:"path"`
+	Method string  `yaml:"method"`
+	Scheme *string `yaml:"scheme,omitempty"`
+	Script string  `yaml:"script"`
 }
 
 type Scheme struct {
@@ -175,8 +175,9 @@ type FormStage struct {
 }
 
 // DATA
+
 type CacheConfig struct {
-	Type  string `yaml:"type"`
+	Type  CacheType `yaml:"type"`
 	Redis *struct {
 		Address  string `yaml:"address"`
 		Password string `yaml:"password"`
@@ -185,7 +186,7 @@ type CacheConfig struct {
 }
 
 type StorageConfig struct {
-	Type string `yaml:"type"`
+	Type StorageType `yaml:"type"`
 	File *struct {
 		Path string `yaml:"path"`
 	} `yaml:"file,omitempty"`

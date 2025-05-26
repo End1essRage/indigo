@@ -103,31 +103,35 @@ func main() {
 	//кэш
 	var cache l.Cache
 	switch config.Cache.Type {
-	case "redis":
+	case c.Cache_Redis:
 		redis, err := ca.NewRedisCache(config.Cache.Redis.Address, sec.RevealSecret(config.Cache.Redis.Password), config.Cache.Redis.DB)
 		if err != nil {
 			panic(err)
 		}
 		cache = redis
-	default:
+	case c.Cache_Memory:
 		cache = buffer
+	default:
+		panic(fmt.Errorf("Not implemented"))
 	}
 
 	//хранилище
 	var storage l.Storage
 	switch config.Storage.Type {
-	case "mongo":
+	case c.Storage_Mongo:
 		uri := fmt.Sprintf("mongodb://%s:%s@%s", config.Storage.Mongo.Login, sec.RevealSecret(config.Storage.Mongo.Password),
 			config.Storage.Mongo.Address)
 		storage, err = st.NewMongoStorage(uri, config.Storage.Mongo.Db)
 		if err != nil {
 			panic(err)
 		}
-	default:
+	case c.Storage_File:
 		storage, err = st.NewFileStorage(config.Storage.File.Path)
 		if err != nil {
 			panic(err)
 		}
+	default:
+		panic(fmt.Errorf("Not implemented"))
 	}
 
 	//http клиент
