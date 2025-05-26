@@ -7,6 +7,96 @@ import (
 	yaml "github.com/goccy/go-yaml"
 )
 
+type YamlConfig struct {
+	Bot          BotConfig      `yaml:"bot"`
+	Cache        CacheConfig    `yaml:"cache"`
+	Storage      StorageConfig  `yaml:"storage"`
+	Media        MediaConfig    `yaml:"media"`
+	Api          *ApiConfig     `yaml:"api,omitempty"`
+	Commands     []Command      `yaml:"commands"`
+	Keyboards    []Keyboard     `yaml:"keyboards,omitempty"`
+	Forms        []Form         `yaml:"forms,omitempty"`
+	Interceptors []Interceptor  `yaml:"interceptors,omitempty"`
+	Modules      []ModuleConfig `yaml:"modules,omitempty"`
+	Secrets      []Secret       `yaml:"secrets,omitempty"`
+}
+
+type Config struct {
+	Bot          BotConfig
+	HTTP         *ApiConfig
+	Cache        CacheConfig
+	Storage      StorageConfig
+	Commands     map[string]*Command
+	Keyboards    map[string]*Keyboard
+	Forms        map[string]*Form
+	Interceptors []Interceptor
+	Modules      []ModuleConfig
+	Secrets      []Secret
+	Media        MediaConfig
+}
+
+type ValidationErr error
+
+// Config loader
+func LoadConfig(path string, validate bool) (*Config, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var yConfig YamlConfig
+	if err := yaml.Unmarshal(data, &yConfig); err != nil {
+		return nil, err
+	}
+
+	if validate {
+		ok, desc := Validate(&yConfig)
+		if !ok {
+			return nil, fmt.Errorf("ошибка валидации: %s", desc)
+		}
+	}
+
+	var config Config
+	config.Bot = yConfig.Bot
+	config.HTTP = yConfig.Api
+	config.Storage = yConfig.Storage
+	config.Cache = yConfig.Cache
+	config.Interceptors = yConfig.Interceptors
+	config.Modules = yConfig.Modules
+	config.Secrets = yConfig.Secrets
+	config.Media = yConfig.Media
+
+	//fill commands
+	config.Commands = make(map[string]*Command)
+	for _, c := range yConfig.Commands {
+		config.Commands[c.Name] = &c
+	}
+
+	//fill keyboards
+	config.Keyboards = make(map[string]*Keyboard)
+	for _, k := range yConfig.Keyboards {
+		config.Keyboards[k.Name] = &k
+	}
+
+	//fill forms
+	config.Forms = make(map[string]*Form)
+	for _, f := range yConfig.Forms {
+		config.Forms[f.Name] = &f
+	}
+
+	return &config, nil
+}
+
+// MEDIA
+type MediaConfig struct {
+	Type string `yaml:"type"`
+}
+
+// SECRETS
+type Secret struct {
+	Name string `yaml:"name"`
+}
+
 // BOT
 type BotConfig struct {
 	Mode       string `yaml:"mode"`
@@ -100,12 +190,14 @@ type StorageConfig struct {
 		Path string `yaml:"path"`
 	} `yaml:"file,omitempty"`
 	Mongo *struct {
-		Uri string `yaml:"uri"`
-		Db  string `yaml:"db"`
+		Address  string `yaml:"address"`
+		Login    string `yaml:"login"`
+		Password string `yaml:"password"`
+		Db       string `yaml:"db"`
 	} `yaml:"mongo,omitempty"`
 }
 
-// HANDLING MIDLLEWARES
+// HANDLING INTERCEPTORS
 type AffectMode string
 
 const AffectMode_All AffectMode = "all"
@@ -130,78 +222,4 @@ type Interceptor struct {
 type ModuleConfig struct {
 	Name Module            `yaml:"name"`
 	Cfg  map[string]string `yaml:"cfg"`
-}
-
-type YamlConfig struct {
-	Bot          BotConfig      `yaml:"bot"`
-	Cache        CacheConfig    `yaml:"cache"`
-	Storage      StorageConfig  `yaml:"storage"`
-	Api          *ApiConfig     `yaml:"api,omitempty"`
-	Commands     []Command      `yaml:"commands"`
-	Keyboards    []Keyboard     `yaml:"keyboards,omitempty"`
-	Forms        []Form         `yaml:"forms,omitempty"`
-	Interceptors []Interceptor  `yaml:"interceptors,omitempty"`
-	Modules      []ModuleConfig `yaml:"modules,omitempty"`
-}
-
-type Config struct {
-	Bot          BotConfig
-	HTTP         *ApiConfig
-	Cache        CacheConfig
-	Storage      StorageConfig
-	Commands     map[string]*Command
-	Keyboards    map[string]*Keyboard
-	Forms        map[string]*Form
-	Interceptors []Interceptor
-	Modules      []ModuleConfig
-}
-
-type ValidationErr error
-
-// Config loader
-func LoadConfig(path string, validate bool) (*Config, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	var yConfig YamlConfig
-	if err := yaml.Unmarshal(data, &yConfig); err != nil {
-		return nil, err
-	}
-
-	if validate {
-		ok, desc := Validate(&yConfig)
-		if !ok {
-			return nil, fmt.Errorf("ошибка валидации: %s", desc)
-		}
-	}
-
-	var config Config
-	config.Bot = yConfig.Bot
-	config.HTTP = yConfig.Api
-	config.Storage = yConfig.Storage
-	config.Cache = yConfig.Cache
-	config.Interceptors = yConfig.Interceptors
-	config.Modules = yConfig.Modules
-
-	//fill commands
-	config.Commands = make(map[string]*Command)
-	for _, c := range yConfig.Commands {
-		config.Commands[c.Name] = &c
-	}
-
-	//fill keyboards
-	config.Keyboards = make(map[string]*Keyboard)
-	for _, k := range yConfig.Keyboards {
-		config.Keyboards[k.Name] = &k
-	}
-
-	//fill forms
-	config.Forms = make(map[string]*Form)
-	for _, f := range yConfig.Forms {
-		config.Forms[f.Name] = &f
-	}
-
-	return &config, nil
 }

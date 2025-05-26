@@ -47,7 +47,7 @@ func (b *LuaStateBuilder) Build() *lua.LState {
 	L := lua.NewState()
 
 	// Базовые модули
-	base := CoreModule{}
+	base := CoreModule{b.le.Secret}
 	base.Apply(L)
 
 	// Кастомные модули

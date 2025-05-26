@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -13,6 +14,7 @@ import (
 	"github.com/end1essrage/indigo-core/client"
 	c "github.com/end1essrage/indigo-core/config"
 	l "github.com/end1essrage/indigo-core/lua"
+	"github.com/end1essrage/indigo-core/secret"
 	s "github.com/end1essrage/indigo-core/server"
 	st "github.com/end1essrage/indigo-core/storage"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -34,7 +36,7 @@ const (
 
 func init() {
 	logrus.SetFormatter(&logrus.TextFormatter{})
-	logrus.SetLevel(logrus.DebugLevel)
+
 	//parse env
 	if err := godotenv.Load(); err != nil {
 		logrus.Warning("error while reading environment", err.Error())
@@ -73,13 +75,23 @@ func main() {
 		panic("no token provided")
 	}
 
+	//глубина логирования
+	if config.Bot.Debug {
+		logrus.SetLevel(logrus.DebugLevel)
+	} else {
+		logrus.SetLevel(logrus.InfoLevel)
+	}
+
+	// кастомные секреты
+	sec := secret.New(config.Secrets)
+
 	// инициализация тг бота
 	tBot, err := tgbotapi.NewBotAPI(Token)
 	if err != nil {
 		logrus.Fatal(err)
 	}
 
-	tBot.Debug = false
+	tBot.Debug = config.Bot.Debug
 	logrus.Infof("Authorized on account %s", tBot.Self.UserName)
 
 	//обертка над тг ботом
@@ -92,7 +104,7 @@ func main() {
 	var cache l.Cache
 	switch config.Cache.Type {
 	case "redis":
-		redis, err := ca.NewRedisCache(config.Cache.Redis.Address, config.Cache.Redis.Password, config.Cache.Redis.DB)
+		redis, err := ca.NewRedisCache(config.Cache.Redis.Address, sec.RevealSecret(config.Cache.Redis.Password), config.Cache.Redis.DB)
 		if err != nil {
 			panic(err)
 		}
@@ -105,7 +117,9 @@ func main() {
 	var storage l.Storage
 	switch config.Storage.Type {
 	case "mongo":
-		storage, err = st.NewMongoStorage(config.Storage.Mongo.Uri, config.Storage.Mongo.Db)
+		uri := fmt.Sprintf("mongodb://%s:%s@%s", config.Storage.Mongo.Login, sec.RevealSecret(config.Storage.Mongo.Password),
+			config.Storage.Mongo.Address)
+		storage, err = st.NewMongoStorage(uri, config.Storage.Mongo.Db)
 		if err != nil {
 			panic(err)
 		}
@@ -120,7 +134,7 @@ func main() {
 	client := client.NewHttpClient()
 
 	//луа движок
-	le := l.NewLuaEngine(bot, cache, client, storage, ScriptsPath)
+	le := l.NewLuaEngine(bot, cache, client, storage, ScriptsPath, sec)
 
 	//обрабатывающий сервер
 	server := s.NewServer(le, bot, config, buffer)

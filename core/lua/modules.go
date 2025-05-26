@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	b "github.com/end1essrage/indigo-core/bot"
+	"github.com/end1essrage/indigo-core/secret"
 	"github.com/sirupsen/logrus"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -11,7 +12,9 @@ import (
 // TODO единый модуль перехвата и обработки ошибок, стоит ли их ваще прокидывать в луа
 
 // Core
-type CoreModule struct{}
+type CoreModule struct {
+	secret *secret.SecretsOperator
+}
 
 func (m *CoreModule) Apply(L *lua.LState) {
 	//Логирование
@@ -19,6 +22,15 @@ func (m *CoreModule) Apply(L *lua.LState) {
 		msg := L.ToString(1)
 		logrus.Warnf("[LUA] %s", msg)
 		return 0
+	}))
+
+	//секреты
+	L.SetGlobal("reveal", L.NewFunction(func(L *lua.LState) int {
+		name := L.ToString(1)
+		sec := m.secret.RevealSecret(name)
+
+		L.Push(lua.LString(sec))
+		return 1
 	}))
 }
 

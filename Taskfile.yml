@@ -52,6 +52,9 @@ tasks:
       - ./{{.BINARY_NAME}}
     env:
       BOT_TOKEN: "{{.BOT_TOKEN}}"
+      MONGO_PWD: "{{.BOT_TOKEN}}"
+      REDIS_PWD: "{{.BOT_TOKEN}}"
+      SOME_SECRET: "{{.BOT_TOKEN}}"
 
   #запуск контейнера
   run:

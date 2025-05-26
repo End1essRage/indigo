@@ -56,6 +56,7 @@ func (fw *FormWorker) HasActiveForm(upd *tgbotapi.Update) bool {
 }
 
 func (fw *FormWorker) StartForm(formName string, userID int64, upd *tgbotapi.Update) error {
+	logrus.Debug("satretd form")
 	form := fw.config.Forms[formName]
 	if form == nil {
 		return fmt.Errorf("form '%s' not found", formName)

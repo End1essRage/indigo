@@ -6,6 +6,18 @@ bot:
   debug: true
   roles: true
 
+# секреты (регистрация новых env переменных)
+# можно ревилить в луа скриптах например для хранения апи токенов
+# все зареганые секреты обязательны
+secrets: 
+  - name: "MONGO_PWD"
+  - name: "REDIS_PWD" 
+  - name: "SOME_SECRET"   
+
+# media
+media:
+  type: "local" # яндекс дикс, гугл диск, s3 minio?
+
 # api
 api:
   address: ":8080"
@@ -40,7 +52,7 @@ cache:
   type: "memory" # или "redis"
   redis:
     address: "redis:6379"
-    password: ""
+    password: "REDIS_PWD" # нужен секрет для его считывания зарегать в блоке секретов
     db: 0
 
 storage:
@@ -48,7 +60,9 @@ storage:
   file:
     path: "./data"
   mongo:
-    uri: "mongodb://admin:password@mongo:27017"
+    address: "mongo:27017"
+    login: "admin"
+    password: "MONGO_PWD" # нужен секрет для его считывания зарегать в блоке секретов
     db: "appdb"
 
 # Запускаются прежде всего
@@ -81,6 +95,8 @@ commands:
     reply: "sosal"
   - name: "register"
     form: "user_registration"
+  - name: "photo"
+    form: "photo_test"
 
 #сделать ролевое ограничение, роли зашивать как тг логины в env
 
@@ -119,6 +135,16 @@ forms:
         keyboard: "yes_no"
 
     script: "user_regestration.lua"
+
+  - name: "photo_test"
+    description: "тест работы с фото"
+    stages:
+      - field: "photo"
+        message: "пришлите фото"
+        validation:
+          type: "photo"
+
+    script: "photo.lua"
 
 #todo Переделать на редактирование сообщения вместо удаления
 #создание клавиатур

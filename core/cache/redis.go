@@ -31,7 +31,9 @@ func NewRedisCache(addr, pwd string, db int) (*RedisCache, error) {
 }
 
 func (c *RedisCache) GetString(key string) string {
-	ctx := context.TODO()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	val, err := c.client.Get(ctx, key).Result()
 	switch {
 	case err == redis.Nil:
@@ -46,12 +48,16 @@ func (c *RedisCache) GetString(key string) string {
 }
 
 func (c *RedisCache) SetString(key string, val string) error {
-	ctx := context.TODO()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	return c.client.Set(ctx, key, val, defaultExpiration).Err()
 }
 
 func (c *RedisCache) Exists(key string) bool {
-	ctx := context.TODO()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	val, err := c.client.Get(ctx, key).Result()
 	return err == nil && val != ""
 }

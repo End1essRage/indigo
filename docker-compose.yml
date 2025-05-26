@@ -28,6 +28,7 @@ services:
       - data_dir:/app/data
       - scripts_dir:/app/scripts
       - config_dir:/app/config
+      - media_dir:/app/media
     depends_on:
       - redis
       - mongo
@@ -47,6 +48,12 @@ volumes:
       type: none
       o: bind
       device: ./mongo_data 
+  media_dir:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./media 
   data_dir:
     driver: local
     driver_opts:
