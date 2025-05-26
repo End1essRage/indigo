@@ -24,6 +24,18 @@ func (m *CoreModule) Apply(L *lua.LState) {
 		return 0
 	}))
 
+	//json encode что тут сказать
+	L.SetGlobal("json_encode", L.NewFunction(func(L *lua.LState) int {
+		dataTable := L.CheckTable(1)
+		data, err := luaTableToJSON(L, dataTable)
+		if err != nil {
+			L.Push(lua.LString("{}"))
+			return 1
+		}
+		L.Push(lua.LString(string(data)))
+		return 1
+	}))
+
 	//секреты
 	L.SetGlobal("reveal", L.NewFunction(func(L *lua.LState) int {
 		name := L.ToString(1)
@@ -38,6 +50,7 @@ func (m *CoreModule) Apply(L *lua.LState) {
 type Storage interface {
 	Save(entityType string, id string, data interface{}) error
 	Load(entityType string, id string, result interface{}) error
+	LoadArray(docFolder, docPath string) ([]interface{}, error)
 	//Exists(ctx context.Context, entityType EntityType, id string) (bool, error)
 	//Delete(ctx context.Context, entityType EntityType, id string) error
 }
@@ -79,10 +92,42 @@ func (m *StorageModule) Apply(L *lua.LState) {
 		id := L.CheckString(2)
 
 		var result map[string]interface{}
-		if err := m.storage.Load(entityType, id, &result); err != nil {
-			L.Push(lua.LNil)
+		err := m.storage.Load(entityType, id, &result)
+
+		if err != nil {
+			// Возвращаем пустую таблицу при ошибках
+			L.Push(L.NewTable())
 			L.Push(lua.LString(err.Error()))
 			return 2
+		}
+
+		// Если файл отсутствовал или пустой
+		if result == nil {
+			L.Push(L.NewTable())
+			return 1
+		}
+
+		tbl := convertToLuaTable(L, result)
+		L.Push(tbl)
+		return 1
+	}))
+
+	L.SetGlobal("storage_load_array", L.NewFunction(func(L *lua.LState) int {
+		entityType := L.CheckString(1)
+		id := L.CheckString(2)
+
+		result, err := m.storage.LoadArray(entityType, id)
+		if err != nil {
+			// Возвращаем пустую таблицу при ошибках
+			L.Push(L.NewTable())
+			L.Push(lua.LString(err.Error()))
+			return 2
+		}
+
+		// Если файл отсутствовал или пустой
+		if result == nil {
+			L.Push(L.NewTable())
+			return 1
 		}
 
 		tbl := convertToLuaTable(L, result)

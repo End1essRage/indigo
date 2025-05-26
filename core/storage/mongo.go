@@ -51,3 +51,7 @@ func (ms *MongoStorage) Load(entityType string, id string, result interface{}) e
 
 	return coll.FindOne(ctx, bson.M{"_id": id}).Decode(result)
 }
+
+func (ms *MongoStorage) LoadArray(docFolder, docPath string) ([]interface{}, error) {
+	return nil, nil
+}

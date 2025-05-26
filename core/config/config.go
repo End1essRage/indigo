@@ -175,7 +175,6 @@ type FormStage struct {
 }
 
 // DATA
-
 type CacheConfig struct {
 	Type  CacheType `yaml:"type"`
 	Redis *struct {

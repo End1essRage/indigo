@@ -9,10 +9,10 @@ bot:
 # секреты (регистрация новых env переменных)
 # можно ревилить в луа скриптах например для хранения апи токенов
 # все зареганые секреты обязательны
-secrets: 
+secrets:
   - name: "MONGO_PWD"
-  - name: "REDIS_PWD" 
-  - name: "SOME_SECRET"   
+  - name: "REDIS_PWD"
+  - name: "SOME_SECRET"
 
 # media
 media:
@@ -20,7 +20,7 @@ media:
 
 # api
 api:
-  address: ":8080"
+  address: ":8082"
   endpoints:
     - path: "/test-get"
       method: "GET"
@@ -31,22 +31,22 @@ api:
       scheme: "scheme_1"
       script: "api_test.lua"
   schemes:
-  - name: "scheme_null"
-  - name: "scheme_1"
-    fields:
-      - name: "user_id"
-        type: "string"
-        required: true
-        source: "body"
-      - name: "message"
-        type: "string"
-        required: true
-        source: "body"
-      - name: "X-Request-Id"
-        type: "string"
-        required: false
-        source: "header"
-  
+    - name: "scheme_null"
+    - name: "scheme_1"
+      fields:
+        - name: "user_id"
+          type: "string"
+          required: true
+          source: "body"
+        - name: "message"
+          type: "string"
+          required: true
+          source: "body"
+        - name: "X-Request-Id"
+          type: "string"
+          required: false
+          source: "header"
+
 # сторонние сервисы
 cache:
   type: "memory" # или "redis"
@@ -76,7 +76,6 @@ interceptors:
     modules:
       - "track_user" # save_user, log, idk...
 
-
 #возможность переключиться на пользовательский режим хранение в ключе кэша
 commands:
   - name: "start"
@@ -105,7 +104,6 @@ modules:
   - name: "save_user"
     cfg:
       table: "customers"
-
 
 #добавить формы через миниапп
 
@@ -163,7 +161,7 @@ keyboards:
             script: "btn3_handler.lua"
           - text: "Кнопка 4"
             data: "customData btn4"
-            
+
   - name: "age_groups"
     message: "Выберите возраст:"
     buttons:
@@ -181,5 +179,3 @@ keyboards:
             data: "yes"
           - text: "нет"
             data: "no"
-
-    
