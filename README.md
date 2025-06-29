@@ -8,8 +8,8 @@
 
 ## 🚀 Быстрый старт
 
-CLI для удобного создания своего проекта
-go install github.com/end1essrage/indigo-core/indigo-cli@latest
+### CLI для удобного создания своего проекта
+go install github.com/end1essrage/indigo-cli@latest
   
 1)установить taskfile 
 
