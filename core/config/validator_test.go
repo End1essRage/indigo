@@ -72,6 +72,47 @@ func TestValidateKeyboard(t *testing.T) {
 	}
 }
 
+func TestValidateCommands(t *testing.T) {
+	form := ""
+
+	//проверить что в групповых командах нет форм
+	t.Run("valid config", func(t *testing.T) {
+		cfg := &YamlConfig{
+			Commands: []Command{
+				{
+					Name:        "valid",
+					Description: "",
+					Use:         CmdUse_Private,
+					Form:        &form,
+				},
+			},
+		}
+
+		valid, msg := Validate(cfg)
+		if !valid {
+			t.Errorf("config should be valid, got error: %s", msg)
+		}
+	})
+
+	t.Run("invalid config", func(t *testing.T) {
+		cfg := &YamlConfig{
+			Commands: []Command{
+				{
+					Name:        "invalid",
+					Description: "",
+					Use:         CmdUse_Group,
+					Form:        &form,
+				},
+			},
+		}
+
+		valid, msg := Validate(cfg)
+		if valid {
+			t.Errorf("config should be invalid, got error: %s", msg)
+		}
+	})
+}
+
 func TestValidateConfig(t *testing.T) {
 	t.Run("valid config", func(t *testing.T) {
 		cfg := &YamlConfig{

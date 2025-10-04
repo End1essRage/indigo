@@ -4,7 +4,7 @@ bot:
   allow_group: true
   is_admin: false #админ группы, бот без имени постит там вот это все
   debug: true
-  roles: true
+  channel: "@myChannel"
 
 # секреты (регистрация новых env переменных)
 # можно ревилить в луа скриптах например для хранения апи токенов
@@ -82,20 +82,26 @@ commands:
     description: "Приветствие"
     script: "welcome.lua"
     role: "all" #admin, <roleName>,<roleName> table is admins anyway [name - role] use redis aka db
+    use: "private" #group channel
   - name: "menu"
     description: "тест меню"
     keyboard: "main_menu"
     role: "admin" # придумать отбивку
+    use: "private" #group channel
   - name: "menu2"
     description: "тест меню"
     script: "keyboard_second_menu.lua"
+    use: "private" #group channel
   - name: "sosal"
     description: "тест меню"
     reply: "sosal"
+    use: "private" #group channel
   - name: "register"
     form: "user_registration"
+    use: "private" #group channel
   - name: "photo"
     form: "photo_test"
+    use: "private" #group channel
 
 #сделать ролевое ограничение, роли зашивать как тг логины в env
 

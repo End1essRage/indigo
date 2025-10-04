@@ -1,6 +1,8 @@
 package bot
 
 import (
+	"fmt"
+
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/sirupsen/logrus"
 )
@@ -11,15 +13,34 @@ type CbData struct {
 }
 
 type TgBot struct {
-	bot *tgbotapi.BotAPI
+	bot     *tgbotapi.BotAPI
+	channel *string
 }
 
-func NewBot(b *tgbotapi.BotAPI) *TgBot {
-	return &TgBot{bot: b}
+func NewBot(b *tgbotapi.BotAPI, channel *string) *TgBot {
+	return &TgBot{bot: b, channel: channel}
 }
 
 func (t *TgBot) SendMessage(chatId int64, text string) error {
 	msg := tgbotapi.NewMessage(chatId, text)
+
+	_, err := t.bot.Send(msg)
+
+	return err
+}
+
+func (t *TgBot) SendChannelMessage(text string, mesh *MeshInlineKeyboard) error {
+	if t.channel == nil {
+		return fmt.Errorf("канал не заполнен")
+	}
+
+	msg := tgbotapi.NewMessageToChannel(*t.channel, text)
+	if mesh != nil {
+		msg.ReplyMarkup = tgbotapi.InlineKeyboardMarkup{
+			InlineKeyboard: CreateInlineKeyboard(*mesh),
+		}
+	}
+
 	_, err := t.bot.Send(msg)
 
 	return err
@@ -33,6 +54,7 @@ func (t *TgBot) Send(msg tgbotapi.MessageConfig) error {
 
 func (t *TgBot) SendKeyboard(chatId int64, text string, mesh MeshInlineKeyboard) error {
 	msg := tgbotapi.NewMessage(chatId, text)
+	logrus.Infof("%+v", mesh)
 	msg.ReplyMarkup = tgbotapi.InlineKeyboardMarkup{
 		InlineKeyboard: CreateInlineKeyboard(mesh),
 	}

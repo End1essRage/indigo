@@ -95,7 +95,7 @@ func main() {
 	logrus.Infof("Authorized on account %s", tBot.Self.UserName)
 
 	//обертка над тг ботом
-	bot := b.NewBot(tBot)
+	bot := b.NewBot(tBot, config.Bot.Channel)
 
 	//buffer
 	buffer := ca.NewInMemoryCache(5 * time.Minute)

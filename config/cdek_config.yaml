@@ -1,0 +1,71 @@
+# приоритет в обработке сообщения: форма -> роль-фильтр -> interceptors -> обработка
+bot:
+  mode: "polling"
+  allow_group: true
+  is_admin: false #админ группы, бот без имени постит там вот это все
+  debug: true
+  channel: "@indigo_cdek"
+
+# секреты (регистрация новых env переменных)
+# можно ревилить в луа скриптах например для хранения апи токенов
+# все зареганые секреты обязательны
+secrets:
+  - name: "MONGO_PWD"
+  - name: "REDIS_PWD"
+
+# сторонние сервисы
+cache:
+  type: "memory" # или "redis"
+  redis:
+    address: "redis:6379"
+    password: "REDIS_PWD" # нужен секрет для его считывания зарегать в блоке секретов
+    db: 0
+
+storage:
+  type: "file" # или "mongo"
+  file:
+    path: "./data"
+  mongo:
+    address: "mongo:27017"
+    login: "admin"
+    password: "MONGO_PWD" # нужен секрет для его считывания зарегать в блоке секретов
+    db: "appdb"
+
+#возможность переключиться на пользовательский режим хранение в ключе кэша
+commands:
+  - name: "create"
+    form: "order_creation"
+    use: "private" #group channel
+
+#сделать ролевое ограничение, роли зашивать как тг логины в env
+
+#добавить формы через миниапп
+
+#формы не работают в общем чате
+#todo пересылка в лс при попытке вызвать форму в общем чате
+forms:
+  - name: "order_creation"
+    description: "Создание заказа"
+    stages:
+      - field: "info"
+        message: "Введите информацию о заказе"
+      - field: "priority"
+        message: "Выберите приоритет:"
+        keyboard: "priority_types"
+      - field: "phone"
+        message: "введите номер телефона"
+
+    script: "order_creation.lua"
+
+#todo Переделать на редактирование сообщения вместо удаления
+#создание клавиатур
+keyboards:
+  - name: "priority_types"
+    buttons:
+      - row:
+          - text: "Высокий"
+            data: "high"
+          - text: "Средний"
+            data: "medium"
+          - text: "Низкий"
+            data: "low"

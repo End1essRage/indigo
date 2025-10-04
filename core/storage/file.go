@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
@@ -26,24 +27,29 @@ func (fs *FileStorage) getPath(docFolder, docPath string) string {
 	return filepath.Join(fs.basePath, docFolder, docPath)
 }
 
-func (fs *FileStorage) Save(docFolder, docPath string, data interface{}) error {
+func (fs *FileStorage) Save(docFolder string, data interface{}) (string, error) {
 	fs.mu.Lock()
 	defer fs.mu.Unlock()
-
-	path := fs.getPath(docFolder, docPath)
+	id := uuid.New().ID()
+	path := fs.getPath(docFolder, fmt.Sprint(id))
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return err
+		return "", err
 	}
 
 	file, err := os.Create(path)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer file.Close()
 
 	enc := json.NewEncoder(file)
 	enc.SetIndent("", "  ")
-	return enc.Encode(data)
+
+	if err := enc.Encode(data); err != nil {
+		return "", err
+	}
+
+	return fmt.Sprint(id), nil
 }
 
 func (fs *FileStorage) Load(docFolder, docPath string, result interface{}) error {

@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 
 vars:
   BINARY_NAME: "indigo.exe"
@@ -13,7 +13,7 @@ vars:
 
 tasks:
   # тесты
-  
+
   # Запуск всех тестов с race detector
   test:
     desc: Run tests with race detector
@@ -55,6 +55,7 @@ tasks:
       MONGO_PWD: "{{.BOT_TOKEN}}"
       REDIS_PWD: "{{.BOT_TOKEN}}"
       SOME_SECRET: "{{.BOT_TOKEN}}"
+      CONFIG_PATH: "{{.CONFIG_PATH}}"
 
   #запуск контейнера
   run:
@@ -70,7 +71,7 @@ tasks:
         -p {{.PORT_BINDING}}
         {{.DOCKER_REGISTRY}}{{.IMAGE_NAME}}:{{.VERSION}}
 
- # Запуск всех сервисов через Docker Compose
+  # Запуск всех сервисов через Docker Compose
   up:
     desc: Start Redis, MongoDB, and the bot
     cmds:

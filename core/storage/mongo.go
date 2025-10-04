@@ -29,18 +29,17 @@ func NewMongoStorage(uri, database string) (*MongoStorage, error) {
 
 //вот тут надо не принимать контекст а создавать с таймаутом ну или оборачивать в таймаут
 
-func (ms *MongoStorage) Save(entityType string, id string, data interface{}) error {
+func (ms *MongoStorage) Save(entityType string, data interface{}) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	coll := ms.client.Database(ms.database).Collection(string(entityType))
 
 	_, err := coll.UpdateOne(ctx,
-		bson.M{"_id": id},
 		bson.M{"$set": data},
 		options.UpdateOne().SetUpsert(true))
 
-	return err
+	return "res.UpsertedID ", err
 }
 
 func (ms *MongoStorage) Load(entityType string, id string, result interface{}) error {

@@ -15,3 +15,11 @@ const (
 	Storage_File  StorageType = "file"
 	Storage_Mongo StorageType = "mongo"
 )
+
+type CmdUse string
+
+const (
+	CmdUse_Private CmdUse = "private"
+	CmdUse_Group   CmdUse = "group"
+	CmdUse_Channel CmdUse = "channel"
+)

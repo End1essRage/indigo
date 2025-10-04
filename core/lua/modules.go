@@ -48,7 +48,7 @@ func (m *CoreModule) Apply(L *lua.LState) {
 
 // Хранилище
 type Storage interface {
-	Save(entityType string, id string, data interface{}) error
+	Save(entityType string, data interface{}) (string, error)
 	Load(entityType string, id string, result interface{}) error
 	LoadArray(docFolder, docPath string) ([]interface{}, error)
 	//Exists(ctx context.Context, entityType EntityType, id string) (bool, error)
@@ -60,8 +60,7 @@ type StorageModule struct{ storage Storage }
 func (m *StorageModule) Apply(L *lua.LState) {
 	L.SetGlobal("storage_save", L.NewFunction(func(L *lua.LState) int {
 		entityType := L.CheckString(1)
-		id := L.CheckString(2)
-		dataTable := L.CheckTable(3)
+		dataTable := L.CheckTable(2)
 
 		data, err := luaTableToJSON(L, dataTable)
 		if err != nil {
@@ -77,13 +76,15 @@ func (m *StorageModule) Apply(L *lua.LState) {
 			return 2
 		}
 
-		if err := m.storage.Save(entityType, id, jsonData); err != nil {
+		id, err := m.storage.Save(entityType, jsonData)
+		if err != nil {
 			L.Push(lua.LFalse)
 			L.Push(lua.LString(err.Error()))
 			return 2
 		}
 
 		L.Push(lua.LTrue)
+		L.Push(lua.LString(id))
 		return 1
 	}))
 
@@ -167,6 +168,7 @@ func (m *CacheModule) Apply(L *lua.LState) {
 // Тг апи
 type Bot interface {
 	SendMessage(chatId int64, text string) error
+	SendChannelMessage(text string, mesh *b.MeshInlineKeyboard) error
 	SendKeyboard(chatId int64, text string, mesh b.MeshInlineKeyboard) error
 }
 type BotModule struct{ bot Bot }
@@ -182,6 +184,27 @@ func (m *BotModule) Apply(L *lua.LState) {
 		logrus.Infof("send_message ChatId: %v  text: %s", chatID, text)
 
 		if err := m.bot.SendMessage(chatID, text); err != nil {
+			logrus.Errorf("Error sending message: %v", err)
+		}
+		return 0
+	}))
+
+	//Отправка сообщения в канал
+	L.SetGlobal("send_channel", L.NewFunction(func(L *lua.LState) int {
+		logrus.Infof("send_channel")
+
+		text := L.ToString(1)
+		meshTable := L.CheckTable(2)
+
+		logrus.Infof("send_channel text: %s", text)
+
+		logrus.Infof("send_channel meshTable: %+v", meshTable)
+
+		mesh := b.FromLuaTableToMeshInlineKeyboard(meshTable)
+
+		logrus.Infof("send_channel mesh: %+v", mesh)
+
+		if err := m.bot.SendChannelMessage(text, &mesh); err != nil {
 			logrus.Errorf("Error sending message: %v", err)
 		}
 		return 0
