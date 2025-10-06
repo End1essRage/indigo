@@ -24,7 +24,7 @@ type LuaEngine struct {
 
 func NewLuaEngine(b Bot, c Cache, h HttpClient, s Storage, path string, sec *secret.SecretsOperator) *LuaEngine {
 	engine := &LuaEngine{bot: b, cache: c, http: h, storage: s, BasePath: path, Secret: sec}
-	spy, err := helpers.NewSpy(path) //LoadScripts(path)
+	spy, err := helpers.NewScripts(path) //LoadScripts(path)
 	if err != nil {
 		logrus.Fatalf("ошибка загрузки скриптов %v", err)
 	}

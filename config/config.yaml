@@ -10,9 +10,7 @@ bot:
 # можно ревилить в луа скриптах например для хранения апи токенов
 # все зареганые секреты обязательны
 secrets:
-  - name: "MONGO_PWD"
-  - name: "REDIS_PWD"
-  - name: "SOME_SECRET"
+#  - name: "API_TOKEN"
 
 # media
 media:
@@ -25,11 +23,11 @@ api:
     - path: "/test-get"
       method: "GET"
       scheme: "scheme_null"
-      script: "api_test.lua"
+      script: "api_test"
     - path: "/test"
       method: "POST"
       scheme: "scheme_1"
-      script: "api_test.lua"
+      script: "api_test"
   schemes:
     - name: "scheme_null"
     - name: "scheme_1"
@@ -52,7 +50,7 @@ cache:
   type: "memory" # или "redis"
   redis:
     address: "redis:6379"
-    password: "REDIS_PWD" # нужен секрет для его считывания зарегать в блоке секретов
+    password: "REDIS_PWD"
     db: 0
 
 storage:
@@ -62,14 +60,14 @@ storage:
   mongo:
     address: "mongo:27017"
     login: "admin"
-    password: "MONGO_PWD" # нужен секрет для его считывания зарегать в блоке секретов
+    password: "MONGO_PWD"
     db: "appdb"
 
 # Запускаются прежде всего
 interceptors:
   - affects: "all" #all, commands, text, buttons, media(img,file),regex, url, filter(add filepath)
     scripts:
-      - "middleware.lua"
+      - "middleware"
     modules:
       - "track_user" # save_user, log, idk...
   - affects: "all" #all, commands, text, buttons, media(img,file),regex, url, filter(add filepath)
@@ -80,7 +78,7 @@ interceptors:
 commands:
   - name: "start"
     description: "Приветствие"
-    script: "welcome.lua"
+    script: "welcome"
     role: "all" #admin, <roleName>,<roleName> table is admins anyway [name - role] use redis aka db
     use: "private" #group channel
   - name: "menu"
@@ -90,7 +88,7 @@ commands:
     use: "private" #group channel
   - name: "menu2"
     description: "тест меню"
-    script: "keyboard_second_menu.lua"
+    script: "keyboard_second_menu"
     use: "private" #group channel
   - name: "sosal"
     description: "тест меню"
@@ -138,7 +136,7 @@ forms:
         message: "Подписаться на рассылку?"
         keyboard: "yes_no"
 
-    script: "user_regestration.lua"
+    script: "user_regestration"
 
   - name: "photo_test"
     description: "тест работы с фото"
@@ -148,7 +146,7 @@ forms:
         validation:
           type: "photo"
 
-    script: "photo.lua"
+    script: "photo"
 
 #todo Переделать на редактирование сообщения вместо удаления
 #создание клавиатур
@@ -158,13 +156,13 @@ keyboards:
     buttons:
       - row:
           - text: "Кнопка 1"
-            script: "btn1_handler.lua"
+            script: "btn1_handler"
           - text: "Кнопка 2"
             data: "customData btn2"
-            script: "data_save_test.lua"
+            script: "data_save_test"
       - row:
           - text: "Кнопка 3"
-            script: "btn3_handler.lua"
+            script: "btn3_handler"
           - text: "Кнопка 4"
             data: "customData btn4"
 

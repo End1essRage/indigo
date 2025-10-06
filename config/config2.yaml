@@ -1,0 +1,54 @@
+# приоритет в обработке сообщения: форма -> роль-фильтр -> interceptors -> обработка
+bot:
+  mode: "polling"
+  allow_group: true
+  is_admin: false #админ группы, бот без имени постит там вот это все
+  debug: true
+  channel: "@myChannel"
+
+# секреты (регистрация новых env переменных)
+# можно ревилить в луа скриптах например для хранения апи токенов
+# все зареганые секреты обязательны
+secrets:
+#  - name: "API_TOKEN"
+
+# media
+media:
+  type: "local" # яндекс дикс, гугл диск, s3 minio?
+
+# сторонние сервисы
+cache:
+  type: "memory" # или "redis"
+  redis:
+    address: "redis:6379"
+    password: "REDIS_PWD"
+    db: 0
+
+storage:
+  type: "file" # или "mongo"
+  file:
+    path: "./data/file"
+  mongo:
+    address: "mongo:27017"
+    login: "admin"
+    password: "MONGO_PWD"
+    db: "appdb"
+
+# Запускаются прежде всего
+interceptors:
+  - affects: "all" #all, commands, text, buttons, media(img,file),regex, url, filter(add filepath)
+    scripts:
+      - "middleware"
+    modules:
+      - "track_user" # save_user, log, idk...
+  - affects: "all" #all, commands, text, buttons, media(img,file),regex, url, filter(add filepath)
+    modules:
+      - "track_user" # save_user, log, idk...
+
+#возможность переключиться на пользовательский режим хранение в ключе кэша
+commands:
+  - name: "start"
+    description: "Приветствие"
+    script: "test/welcome"
+    role: "all" #admin, <roleName>,<roleName> table is admins anyway [name - role] use redis aka db
+    use: "private" #group channel

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"path"
@@ -29,8 +28,8 @@ var (
 )
 
 const (
-	defaultConfigPath  = "/config/config.yaml"
-	defaultScriptsPath = "/app/scripts"
+	defaultConfigPath  = "config/config.yaml"
+	defaultScriptsPath = "scripts"
 	validate           = true
 )
 
@@ -68,12 +67,14 @@ func main() {
 	//загружаем конфиг
 	config, err := c.LoadConfig(path.Join(curDir, ConfigPath), validate)
 	if err != nil {
-		log.Fatalf("Error loading config: %v", err)
+		logrus.Fatalf("Error loading config: %v", err)
 	}
 
 	if Token == "" {
 		panic("no token provided")
 	}
+
+	logrus.Infof("DEBUG=%v", config.Bot.Debug)
 
 	//глубина логирования
 	if config.Bot.Debug {
@@ -104,7 +105,7 @@ func main() {
 	var cache l.Cache
 	switch config.Cache.Type {
 	case c.Cache_Redis:
-		redis, err := ca.NewRedisCache(config.Cache.Redis.Address, sec.RevealSecret(config.Cache.Redis.Password), config.Cache.Redis.DB)
+		redis, err := ca.NewRedisCache(config.Cache.Redis.Address, config.Cache.Redis.Password, config.Cache.Redis.DB)
 		if err != nil {
 			panic(err)
 		}
@@ -119,7 +120,7 @@ func main() {
 	var storage l.Storage
 	switch config.Storage.Type {
 	case c.Storage_Mongo:
-		uri := fmt.Sprintf("mongodb://%s:%s@%s", config.Storage.Mongo.Login, sec.RevealSecret(config.Storage.Mongo.Password),
+		uri := fmt.Sprintf("mongodb://%s:%s@%s", config.Storage.Mongo.Login, config.Storage.Mongo.Password,
 			config.Storage.Mongo.Address)
 		storage, err = st.NewMongoStorage(uri, config.Storage.Mongo.Db)
 		if err != nil {

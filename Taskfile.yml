@@ -5,9 +5,16 @@ vars:
   IMAGE_NAME: "indigo"
   VERSION: "latest"
   DOCKER_REGISTRY: "end1essrage/"
+
+  # локальные папки монтирования
   CONFIG_DIR: "${PWD}/config"
   SCRIPTS_DIR: "${PWD}/scripts"
-  DATA_DIR: "${PWD}/data"
+  DATA_DIR: "${PWD}/data/files"
+
+  # env для ядра
+  CONFIG_PATH: "config/config.yaml" # default app/config/config.yaml
+  SCRIPTS_PATH: "scripts" # default app/scripts
+
   BOT_TOKEN: ""
   PORT_BINDING: 80:8080
 
@@ -52,10 +59,11 @@ tasks:
       - ./{{.BINARY_NAME}}
     env:
       BOT_TOKEN: "{{.BOT_TOKEN}}"
-      MONGO_PWD: "{{.BOT_TOKEN}}"
-      REDIS_PWD: "{{.BOT_TOKEN}}"
-      SOME_SECRET: "{{.BOT_TOKEN}}"
+      #      MONGO_PWD: "{{.BOT_TOKEN}}"
+      #      REDIS_PWD: "{{.BOT_TOKEN}}"
+      #      SOME_SECRET: "{{.BOT_TOKEN}}"
       CONFIG_PATH: "{{.CONFIG_PATH}}"
+      SCRIPTS_PATH: "{{.SCRIPTS_PATH}}"
 
   #запуск контейнера
   run:
@@ -68,6 +76,8 @@ tasks:
         -v {{.SCRIPTS_DIR}}:/app/scripts
         -v {{.DATA_DIR}}:/app/data
         -e BOT_TOKEN={{.BOT_TOKEN}}
+        -e CONFIG_PATH={{.CONFIG_PATH}}
+        -e SCRIPTS_PATH={{.SCRIPTS_PATH}}
         -p {{.PORT_BINDING}}
         {{.DOCKER_REGISTRY}}{{.IMAGE_NAME}}:{{.VERSION}}
 
