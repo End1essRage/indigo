@@ -15,6 +15,7 @@ import (
 	l "github.com/end1essrage/indigo-core/lua"
 	"github.com/end1essrage/indigo-core/secret"
 	s "github.com/end1essrage/indigo-core/server"
+	"github.com/end1essrage/indigo-core/service"
 	st "github.com/end1essrage/indigo-core/storage"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
@@ -141,8 +142,11 @@ func main() {
 	//луа движок
 	le := l.NewLuaEngine(bot, cache, client, storage, ScriptsPath, sec)
 
+	//сервисы
+	service := service.NewService(bot, storage)
+
 	//обрабатывающий сервер
-	server := s.NewServer(le, bot, config, buffer)
+	server := s.NewServer(le, bot, config, buffer, service)
 
 	//получаем обновления
 	u := tgbotapi.NewUpdate(0)

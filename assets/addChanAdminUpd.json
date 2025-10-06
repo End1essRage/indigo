@@ -1,0 +1,57 @@
+{
+	"ok": true,
+	"result": [
+		{
+			"update_id": 353283670,
+			"my_chat_member": {
+				"chat": {
+					"id": -1003122598093,
+					"title": "tese",
+					"type": "channel"
+				},
+				"from": {
+					"id": 7337303205,
+					"is_bot": false,
+					"first_name": "Nnnnnnn",
+					"username": "envyloup",
+					"language_code": "ru"
+				},
+				"date": 1759755428,
+				"old_chat_member": {
+					"user": {
+						"id": 8085733762,
+						"is_bot": true,
+						"first_name": "indigo-dev",
+						"username": "indigo_dev_bot"
+					},
+					"status": "left"
+				},
+				"new_chat_member": {
+					"user": {
+						"id": 8085733762,
+						"is_bot": true,
+						"first_name": "indigo-dev",
+						"username": "indigo_dev_bot"
+					},
+					"status": "administrator",
+					"can_be_edited": false,
+					"can_manage_chat": true,
+					"can_change_info": true,
+					"can_post_messages": true,
+					"can_edit_messages": true,
+					"can_delete_messages": true,
+					"can_invite_users": true,
+					"can_restrict_members": true,
+					"can_promote_members": false,
+					"can_manage_video_chats": true,
+					"can_post_stories": true,
+					"can_edit_stories": true,
+					"can_delete_stories": true,
+					"can_manage_direct_messages": true,
+					"is_anonymous": false,
+					"can_manage_voice_chats": true
+				}
+			}
+		}
+	]
+}
