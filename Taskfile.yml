@@ -9,7 +9,7 @@ vars:
   # локальные папки монтирования
   CONFIG_DIR: "${PWD}/config"
   SCRIPTS_DIR: "${PWD}/scripts"
-  DATA_DIR: "${PWD}/data/files"
+  DATA_DIR: "${PWD}/storage"
 
   # env для ядра
   CONFIG_PATH: "config/config.yaml" # default app/config/config.yaml
@@ -74,7 +74,7 @@ tasks:
         docker run -d --name {{.IMAGE_NAME}}
         -v {{.CONFIG_DIR}}:/app/config
         -v {{.SCRIPTS_DIR}}:/app/scripts
-        -v {{.DATA_DIR}}:/app/data
+        -v {{.DATA_DIR}}:/app/storage
         -e BOT_TOKEN={{.BOT_TOKEN}}
         -e CONFIG_PATH={{.CONFIG_PATH}}
         -e SCRIPTS_PATH={{.SCRIPTS_PATH}}

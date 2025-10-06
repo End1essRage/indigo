@@ -1,6 +1,7 @@
 *exe
 .vscode
 .env
+storage
 data
 mongo_data
 redis_data

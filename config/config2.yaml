@@ -27,7 +27,7 @@ cache:
 storage:
   type: "file" # или "mongo"
   file:
-    path: "./data/file"
+    path: "./storage"
   mongo:
     address: "mongo:27017"
     login: "admin"
