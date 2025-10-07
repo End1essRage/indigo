@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
+	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -14,12 +15,11 @@ import (
 
 type FileStorage struct {
 	basePath string
-	mu       sync.RWMutex
 }
 
 func NewFileStorage(basePath string) (*FileStorage, error) {
 	if err := os.MkdirAll(basePath, 0755); err != nil {
-		return nil, fmt.Errorf("failed to create base directory", err)
+		return nil, fmt.Errorf("failed to create base directory: %w", err)
 	}
 	return &FileStorage{basePath: basePath}, nil
 }
@@ -29,6 +29,9 @@ func (fs *FileStorage) getPath(docFolder, docPath string) string {
 }
 
 func (fs *FileStorage) Get(ctx context.Context, collection string, count int, query string) ([]Entity, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("context error: %w", err)
+	}
 	return nil, nil
 }
 
@@ -43,9 +46,8 @@ func (fs *FileStorage) GetById(ctx context.Context, collection string, id string
 
 	go func() {
 		var result Entity
-
 		if err := fs.load(collection, id, &result); err != nil {
-			errChan <- fmt.Errorf("Ошбика загрзуки сущности", err)
+			errChan <- fmt.Errorf("ошибка загрузки сущности: %w", err)
 			return
 		}
 		resultChan <- result
@@ -71,9 +73,9 @@ func (fs *FileStorage) Create(ctx context.Context, collection string, entity Ent
 	resultChan := make(chan string, 1)
 
 	go func() {
-		id, err := fs.save(collection, entity)
+		id, err := fs.save(0, collection, entity)
 		if err != nil {
-			errChan <- fmt.Errorf("Ошбика загрзуки сущности", err)
+			errChan <- fmt.Errorf("ошибка сохранения сущности: %w", err)
 			return
 		}
 		resultChan <- id
@@ -90,50 +92,94 @@ func (fs *FileStorage) Create(ctx context.Context, collection string, entity Ent
 }
 
 func (fs *FileStorage) UpdateById(ctx context.Context, collection string, id string, entity Entity) error {
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("context error: %w", err)
+	}
+
+	var result Entity
+	err := fs.load(collection, id, &result)
+	if err != nil {
+		return fmt.Errorf("ошибка поиска по айди: %w", err)
+	}
+
+	for k, v := range entity {
+		result[k] = v
+	}
+
+	ids, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		return fmt.Errorf("context error: %w", err)
+	}
+
+	_, err = fs.save(uint32(ids), collection, result)
+
 	return nil
 }
 
 func (fs *FileStorage) Update(ctx context.Context, collection string, query string, entity Entity) (int, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, fmt.Errorf("context error: %w", err)
+	}
 	return 0, nil
 }
 
 func (fs *FileStorage) DeleteById(ctx context.Context, collection string, id string) error {
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("context error: %w", err)
+	}
 	return nil
 }
 
 func (fs *FileStorage) Delete(ctx context.Context, collection string, query string) (int, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, fmt.Errorf("context error: %w", err)
+	}
 	return 0, nil
 }
 
-func (fs *FileStorage) save(docFolder string, data Entity) (string, error) {
-	fs.mu.Lock()
-	defer fs.mu.Unlock()
-	id := uuid.New().ID()
+// save с атомарной записью (БЕЗ МЬЮТЕКСА!)
+func (fs *FileStorage) save(id uint32, docFolder string, data Entity) (string, error) {
+	// Генерируем ID если нужно
+	if id == 0 {
+		id = uuid.New().ID()
+	}
+
 	path := fs.getPath(docFolder, fmt.Sprint(id))
+
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return "", err
 	}
 
-	file, err := os.Create(path)
+	// АТОМАРНАЯ ЗАПИСЬ: пишем во временный файл
+	tempPath := path + ".tmp." + fmt.Sprint(time.Now().UnixNano())
+	file, err := os.Create(tempPath)
 	if err != nil {
 		return "", err
 	}
-	defer file.Close()
 
 	enc := json.NewEncoder(file)
 	enc.SetIndent("", "  ")
+	encErr := enc.Encode(data)
+	file.Close() // Закрываем перед rename!
 
-	if err := enc.Encode(data); err != nil {
+	if encErr != nil {
+		os.Remove(tempPath)
+		return "", encErr
+	}
+
+	// Атомарное переименование (гарантируется ОС)
+	// Это защищает от чтения частично записанного файла
+	if err := os.Rename(tempPath, path); err != nil {
+		os.Remove(tempPath)
 		return "", err
 	}
 
 	return fmt.Sprint(id), nil
 }
 
+// load читает файл (БЕЗ МЬЮТЕКСА!)
+// Каждый os.Open создает отдельный file descriptor
 func (fs *FileStorage) load(docFolder, docPath string, result *Entity) error {
-	fs.mu.RLock()
-	defer fs.mu.RUnlock()
-
 	path := fs.getPath(docFolder, docPath)
 
 	// Если файла нет - возвращаем nil без ошибки
@@ -156,9 +202,6 @@ func (fs *FileStorage) load(docFolder, docPath string, result *Entity) error {
 		return err
 	}
 	defer file.Close()
-
-	bytes, _ := os.ReadFile(path)
-	logrus.Debugf("data is %s", bytes)
 
 	return json.NewDecoder(file).Decode(result)
 }
