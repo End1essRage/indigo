@@ -122,12 +122,14 @@ func main() {
 	var storage storage.Storage
 	switch config.Storage.Type {
 	case c.Storage_Mongo:
-		uri := fmt.Sprintf("mongodb://%s:%s@%s", config.Storage.Mongo.Login, config.Storage.Mongo.Password,
-			config.Storage.Mongo.Address)
-		storage, err = st.NewMongoStorage(uri, config.Storage.Mongo.Db)
-		if err != nil {
-			panic(err)
-		}
+		/*
+			uri := fmt.Sprintf("mongodb://%s:%s@%s", config.Storage.Mongo.Login, config.Storage.Mongo.Password,
+				config.Storage.Mongo.Address)
+			storage, err = st.NewMongoStorage(uri, config.Storage.Mongo.Db)
+			if err != nil {
+				panic(err)
+			}
+		*/
 	case c.Storage_File:
 		storage, err = st.NewFileStorage(config.Storage.File.Path)
 		if err != nil {
