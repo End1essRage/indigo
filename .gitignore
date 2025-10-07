@@ -1,8 +1,8 @@
 *exe
 .vscode
 .env
-storage
-data
+/storage
+/data
 mongo_data
 redis_data
 .task

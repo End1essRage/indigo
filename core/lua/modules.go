@@ -1,10 +1,12 @@
 package lua
 
 import (
+	"context"
 	"encoding/json"
 
 	b "github.com/end1essrage/indigo-core/bot"
 	"github.com/end1essrage/indigo-core/secret"
+	"github.com/end1essrage/indigo-core/storage"
 	"github.com/sirupsen/logrus"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -48,11 +50,8 @@ func (m *CoreModule) Apply(L *lua.LState) {
 
 // Хранилище
 type Storage interface {
-	Save(entityType string, data interface{}) (string, error)
-	Load(entityType string, id string, result interface{}) error
-	LoadArray(docFolder, docPath string) ([]interface{}, error)
-	//Exists(ctx context.Context, entityType EntityType, id string) (bool, error)
-	//Delete(ctx context.Context, entityType EntityType, id string) error
+	GetById(ctx context.Context, collection string, id string) (storage.Entity, error)
+	Create(ctx context.Context, collection string, entity storage.Entity) (string, error)
 }
 
 type StorageModule struct{ storage Storage }
@@ -69,14 +68,14 @@ func (m *StorageModule) Apply(L *lua.LState) {
 			return 2
 		}
 
-		var jsonData interface{}
+		var jsonData storage.Entity
 		if err := json.Unmarshal(data, &jsonData); err != nil {
 			L.Push(lua.LFalse)
 			L.Push(lua.LString(err.Error()))
 			return 2
 		}
 
-		id, err := m.storage.Save(entityType, jsonData)
+		id, err := m.storage.Create(context.TODO(), entityType, jsonData)
 		if err != nil {
 			L.Push(lua.LFalse)
 			L.Push(lua.LString(err.Error()))
@@ -92,32 +91,7 @@ func (m *StorageModule) Apply(L *lua.LState) {
 		entityType := L.CheckString(1)
 		id := L.CheckString(2)
 
-		var result map[string]interface{}
-		err := m.storage.Load(entityType, id, &result)
-
-		if err != nil {
-			// Возвращаем пустую таблицу при ошибках
-			L.Push(L.NewTable())
-			L.Push(lua.LString(err.Error()))
-			return 2
-		}
-
-		// Если файл отсутствовал или пустой
-		if result == nil {
-			L.Push(L.NewTable())
-			return 1
-		}
-
-		tbl := convertToLuaTable(L, result)
-		L.Push(tbl)
-		return 1
-	}))
-
-	L.SetGlobal("storage_load_array", L.NewFunction(func(L *lua.LState) int {
-		entityType := L.CheckString(1)
-		id := L.CheckString(2)
-
-		result, err := m.storage.LoadArray(entityType, id)
+		result, err := m.storage.GetById(context.TODO(), entityType, id)
 		if err != nil {
 			// Возвращаем пустую таблицу при ошибках
 			L.Push(L.NewTable())

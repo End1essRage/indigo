@@ -16,6 +16,7 @@ import (
 	"github.com/end1essrage/indigo-core/secret"
 	s "github.com/end1essrage/indigo-core/server"
 	"github.com/end1essrage/indigo-core/service"
+	"github.com/end1essrage/indigo-core/storage"
 	st "github.com/end1essrage/indigo-core/storage"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
@@ -118,7 +119,7 @@ func main() {
 	}
 
 	//хранилище
-	var storage l.Storage
+	var storage storage.Storage
 	switch config.Storage.Type {
 	case c.Storage_Mongo:
 		uri := fmt.Sprintf("mongodb://%s:%s@%s", config.Storage.Mongo.Login, config.Storage.Mongo.Password,

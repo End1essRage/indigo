@@ -1,7 +1,11 @@
 package service
 
 import (
+	"context"
 	"fmt"
+
+	"github.com/end1essrage/indigo-core/storage"
+	"github.com/sirupsen/logrus"
 )
 
 type BotAdminRequest struct {
@@ -19,10 +23,17 @@ type ChannelInfo struct {
 func (s *Service) HandleBotAdd(req BotAdminRequest) {
 	code := req.Title[0:3]
 	//сохранить канал с каким-то кодо
-	s.storage.Save("channelAdm", ChannelInfo{
-		ChanId: req.ChannelId,
-		Title:  req.Title,
-		Code:   code})
+	entity := storage.NewEntity()
+	entity["ChanId"] = req.ChannelId
+	entity["Title"] = req.Title
+	entity["Code"] = code
+
+	id, err := s.storage.Create(context.TODO(), "channelAdm", entity)
+	if err != nil {
+		logrus.Errorf("ошибка создания записи")
+	}
+
+	logrus.Infof("id документа %s", id)
 
 	//отправить сообщение админу в личку тому кто добавил
 	s.bot.SendMessage(req.FromId, fmt.Sprintf("Бот добавлен в канал %s с кодом %s для смены кода перейдите в админ меню", req.Title, code))
