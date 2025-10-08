@@ -28,10 +28,11 @@ func (fs *FileStorage) getPath(docFolder, docPath string) string {
 	return filepath.Join(fs.basePath, docFolder, docPath)
 }
 
-func (fs *FileStorage) Get(ctx context.Context, collection string, count int, query string) ([]Entity, error) {
+func (fs *FileStorage) Get(ctx context.Context, collection string, count int, query QueryNode) ([]Entity, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, fmt.Errorf("context error: %w", err)
 	}
+
 	return nil, nil
 }
 
@@ -116,7 +117,7 @@ func (fs *FileStorage) UpdateById(ctx context.Context, collection string, id str
 	return nil
 }
 
-func (fs *FileStorage) Update(ctx context.Context, collection string, query string, entity Entity) (int, error) {
+func (fs *FileStorage) Update(ctx context.Context, collection string, query QueryNode, entity Entity) (int, error) {
 	if err := ctx.Err(); err != nil {
 		return 0, fmt.Errorf("context error: %w", err)
 	}
@@ -127,10 +128,24 @@ func (fs *FileStorage) DeleteById(ctx context.Context, collection string, id str
 	if err := ctx.Err(); err != nil {
 		return fmt.Errorf("context error: %w", err)
 	}
+
+	var result Entity
+	err := fs.load(collection, id, &result)
+	if err != nil {
+		return fmt.Errorf("ошибка поиска по айди: %w", err)
+	}
+
+	ids, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		return fmt.Errorf("context error: %w", err)
+	}
+
+	_, err = fs.delete(collection, uint32(ids))
+
 	return nil
 }
 
-func (fs *FileStorage) Delete(ctx context.Context, collection string, query string) (int, error) {
+func (fs *FileStorage) Delete(ctx context.Context, collection string, query QueryNode) (int, error) {
 	if err := ctx.Err(); err != nil {
 		return 0, fmt.Errorf("context error: %w", err)
 	}
@@ -204,4 +219,22 @@ func (fs *FileStorage) load(docFolder, docPath string, result *Entity) error {
 	defer file.Close()
 
 	return json.NewDecoder(file).Decode(result)
+}
+
+// delete удаляет файл по ID из указанной коллекции
+func (fs *FileStorage) delete(docFolder string, id uint32) (string, error) {
+	// Формируем путь к файлу
+	path := fs.getPath(docFolder, fmt.Sprint(id))
+
+	// Проверяем существование файла
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return "", fmt.Errorf("file not found: %s", path)
+	}
+
+	// Удаляем файл
+	if err := os.Remove(path); err != nil {
+		return "", fmt.Errorf("failed to delete file: %w", err)
+	}
+
+	return fmt.Sprint(id), nil
 }

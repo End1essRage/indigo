@@ -24,16 +24,16 @@ type Bot interface {
 }
 
 type Storage interface {
-	Get(ctx context.Context, collection string, count int, query string) ([]storage.Entity, error)
+	Get(ctx context.Context, collection string, count int, query storage.QueryNode) ([]storage.Entity, error)
 	GetById(ctx context.Context, collection string, id string) (storage.Entity, error)
 
 	Create(ctx context.Context, collection string, entity storage.Entity) (string, error)
 
 	UpdateById(ctx context.Context, collection string, id string, entity storage.Entity) error
-	Update(ctx context.Context, collection string, query string, entity storage.Entity) (int, error)
+	Update(ctx context.Context, collection string, query storage.QueryNode, entity storage.Entity) (int, error)
 
 	DeleteById(ctx context.Context, collection string, id string) error
-	Delete(ctx context.Context, collection string, query string) (int, error)
+	Delete(ctx context.Context, collection string, query storage.QueryNode) (int, error)
 }
 
 func NewService(bot Bot, storage Storage) *Service {
