@@ -1,4 +1,4 @@
-package lua
+package lua_helpers
 
 import (
 	"encoding/json"
@@ -9,27 +9,27 @@ import (
 )
 
 // convertToLuaTable рекурсивно конвертирует Go-значения в Lua-структуры
-func convertToLuaTable(L *lua.LState, value interface{}) *lua.LTable {
+func ConvertToLuaTable(L *lua.LState, value interface{}) *lua.LTable {
 	tbl := L.NewTable()
 
 	switch v := value.(type) {
 	case map[string]interface{}:
 		for key, val := range v {
-			tbl.RawSetString(key, convertValue(L, val))
+			tbl.RawSetString(key, ConvertValue(L, val))
 		}
 	case []interface{}:
 		for i, elem := range v {
-			tbl.RawSetInt(i+1, convertValue(L, elem)) // В Lua индексы с 1
+			tbl.RawSetInt(i+1, ConvertValue(L, elem)) // В Lua индексы с 1
 		}
 	default:
 		// Обрабатываем простые типы
-		tbl.RawSetString("value", convertValue(L, value))
+		tbl.RawSetString("value", ConvertValue(L, value))
 	}
 	return tbl
 }
 
 // convertValue обрабатывает отдельные значения
-func convertValue(L *lua.LState, value interface{}) lua.LValue {
+func ConvertValue(L *lua.LState, value interface{}) lua.LValue {
 	switch v := value.(type) {
 	case nil:
 		return lua.LNil
@@ -44,9 +44,9 @@ func convertValue(L *lua.LState, value interface{}) lua.LValue {
 	case string:
 		return lua.LString(v)
 	case []interface{}:
-		return convertToLuaTable(L, v)
+		return ConvertToLuaTable(L, v)
 	case map[string]interface{}:
-		return convertToLuaTable(L, v)
+		return ConvertToLuaTable(L, v)
 	case json.Number:
 		if num, err := v.Float64(); err == nil {
 			return lua.LNumber(num)
@@ -54,25 +54,25 @@ func convertValue(L *lua.LState, value interface{}) lua.LValue {
 		return lua.LString(v)
 	default:
 		// Попытка обработки через рефлексию для сложных типов
-		return convertReflectedValue(L, v)
+		return ConvertReflectedValue(L, v)
 	}
 }
 
 // convertReflectedValue обрабатывает нестандартные типы
-func convertReflectedValue(L *lua.LState, value interface{}) lua.LValue {
+func ConvertReflectedValue(L *lua.LState, value interface{}) lua.LValue {
 	rv := reflect.ValueOf(value)
 	switch rv.Kind() {
 	case reflect.Slice, reflect.Array:
 		tbl := L.NewTable()
 		for i := 0; i < rv.Len(); i++ {
-			tbl.RawSetInt(i+1, convertValue(L, rv.Index(i).Interface()))
+			tbl.RawSetInt(i+1, ConvertValue(L, rv.Index(i).Interface()))
 		}
 		return tbl
 	case reflect.Map:
 		tbl := L.NewTable()
 		for _, key := range rv.MapKeys() {
 			strKey := fmt.Sprintf("%v", key.Interface())
-			tbl.RawSetString(strKey, convertValue(L, rv.MapIndex(key).Interface()))
+			tbl.RawSetString(strKey, ConvertValue(L, rv.MapIndex(key).Interface()))
 		}
 		return tbl
 	case reflect.Struct:
@@ -81,9 +81,9 @@ func convertReflectedValue(L *lua.LState, value interface{}) lua.LValue {
 		for i := 0; i < rt.NumField(); i++ {
 			field := rt.Field(i)
 			if tag := field.Tag.Get("json"); tag != "" {
-				tbl.RawSetString(tag, convertValue(L, rv.Field(i).Interface()))
+				tbl.RawSetString(tag, ConvertValue(L, rv.Field(i).Interface()))
 			} else {
-				tbl.RawSetString(field.Name, convertValue(L, rv.Field(i).Interface()))
+				tbl.RawSetString(field.Name, ConvertValue(L, rv.Field(i).Interface()))
 			}
 		}
 		return tbl
@@ -92,25 +92,25 @@ func convertReflectedValue(L *lua.LState, value interface{}) lua.LValue {
 	}
 }
 
-func luaTableToJSON(L *lua.LState, tbl *lua.LTable) ([]byte, error) {
-	goValue := convertLuaValue(L, tbl)
+func LuaTableToJSON(L *lua.LState, tbl *lua.LTable) ([]byte, error) {
+	goValue := ConvertLuaValue(L, tbl)
 	return json.Marshal(goValue)
 }
 
-func convertLuaValue(L *lua.LState, value lua.LValue) interface{} {
+func ConvertLuaValue(L *lua.LState, value lua.LValue) interface{} {
 	switch v := value.(type) {
 	case *lua.LTable:
 		maxn := v.MaxN()
 		if maxn == 0 { // объект
 			result := make(map[string]interface{})
 			v.ForEach(func(k, val lua.LValue) {
-				result[k.String()] = convertLuaValue(L, val)
+				result[k.String()] = ConvertLuaValue(L, val)
 			})
 			return result
 		} else { // массив
 			result := make([]interface{}, maxn)
 			for i := 1; i <= maxn; i++ {
-				result[i-1] = convertLuaValue(L, v.RawGetInt(i))
+				result[i-1] = ConvertLuaValue(L, v.RawGetInt(i))
 			}
 			return result
 		}

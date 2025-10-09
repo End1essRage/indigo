@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/end1essrage/indigo-core/helpers"
+	h "github.com/end1essrage/indigo-core/lua/helpers"
+	m "github.com/end1essrage/indigo-core/lua/modules"
 	"github.com/end1essrage/indigo-core/secret"
 	"github.com/sirupsen/logrus"
 	lua "github.com/yuin/gopher-lua"
@@ -13,18 +15,18 @@ import (
 
 // Lua engine wrapper
 type LuaEngine struct {
-	bot      Bot
-	cache    Cache
-	http     HttpClient
-	storage  Storage
+	bot      m.Bot
+	cache    m.Cache
+	http     m.HttpClient
+	storage  m.Storage
 	BasePath string
 	Secret   *secret.SecretsOperator
 	scripts  map[string][]byte
 }
 
-func NewLuaEngine(b Bot, c Cache, h HttpClient, s Storage, path string, sec *secret.SecretsOperator) *LuaEngine {
+func NewLuaEngine(b m.Bot, c m.Cache, h m.HttpClient, s m.Storage, path string, sec *secret.SecretsOperator) *LuaEngine {
 	engine := &LuaEngine{bot: b, cache: c, http: h, storage: s, BasePath: path, Secret: sec}
-	spy, err := helpers.NewScripts(path) //LoadScripts(path)
+	spy, err := helpers.NewScripts(path)
 	if err != nil {
 		logrus.Fatalf("ошибка загрузки скриптов %v", err)
 	}
@@ -37,11 +39,12 @@ func (le *LuaEngine) ExecuteScript(scriptPath string, lContext LuaContext) error
 	logrus.Infof("ExecuteScript path:%s", scriptPath)
 
 	L := NewStateBuilder(le).
-		WithModule(&CacheModule{cache: le.cache}).
-		WithModule(&BotModule{bot: le.bot}).
-		WithModule(&HttpModule{client: le.http}).
-		WithModule(&StorageModule{storage: le.storage}).
+		WithModule(m.NewCache(le.cache)).
+		WithModule(m.NewBot(le.bot)).
+		WithModule(m.NewHttp(le.http)).
+		WithModule(m.NewStorage(le.storage)).
 		Build()
+
 	defer L.Close()
 
 	//заполняем контекст
@@ -112,7 +115,7 @@ func convertMapToLuaTable(L *lua.LState, data map[string]interface{}) *lua.LTabl
 		case bool:
 			L.SetField(tbl, k, lua.LBool(value))
 		case map[string]interface{}:
-			L.SetField(tbl, k, convertToLuaTable(L, value))
+			L.SetField(tbl, k, h.ConvertToLuaTable(L, value))
 		case []interface{}:
 			arr := L.NewTable()
 			for i, item := range value {
@@ -124,7 +127,7 @@ func convertMapToLuaTable(L *lua.LState, data map[string]interface{}) *lua.LTabl
 				case bool:
 					L.RawSetInt(arr, i+1, lua.LBool(elem))
 				case map[string]interface{}:
-					L.RawSetInt(arr, i+1, convertToLuaTable(L, elem))
+					L.RawSetInt(arr, i+1, h.ConvertToLuaTable(L, elem))
 				}
 			}
 			L.SetField(tbl, k, arr)

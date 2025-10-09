@@ -99,11 +99,8 @@ type Secret struct {
 
 // BOT
 type BotConfig struct {
-	Mode       string  `yaml:"mode"`
-	AllowGroup bool    `yaml:"allow_group"`
-	IsAdmin    bool    `yaml:"is_admin"`
-	Debug      bool    `yaml:"debug"`
-	Channel    *string `yaml:"channel,omitempty"`
+	Mode  string `yaml:"mode"`
+	Debug bool   `yaml:"debug"`
 }
 
 type Command struct {

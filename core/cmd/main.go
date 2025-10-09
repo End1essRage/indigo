@@ -98,13 +98,13 @@ func main() {
 	logrus.Infof("Authorized on account %s", tBot.Self.UserName)
 
 	//обертка над тг ботом
-	bot := b.NewBot(tBot, config.Bot.Channel)
+	bot := b.NewBot(tBot)
 
 	//buffer
 	buffer := ca.NewInMemoryCache(5 * time.Minute)
 
 	//кэш
-	var cache l.Cache
+	var cache ca.Cache
 	switch config.Cache.Type {
 	case c.Cache_Redis:
 		redis, err := ca.NewRedisCache(config.Cache.Redis.Address, config.Cache.Redis.Password, config.Cache.Redis.DB)

@@ -3,6 +3,7 @@ package lua
 import (
 	"net/http"
 
+	m "github.com/end1essrage/indigo-core/lua/modules"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -47,7 +48,7 @@ func (b *LuaStateBuilder) Build() *lua.LState {
 	L := lua.NewState()
 
 	// Базовые модули
-	base := CoreModule{b.le.Secret}
+	base := m.NewCore(b.le.Secret)
 	base.Apply(L)
 
 	// Кастомные модули

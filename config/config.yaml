@@ -76,12 +76,10 @@ commands:
   - name: "start"
     description: "Приветствие"
     script: "welcome"
-    role: "all" #admin, <roleName>,<roleName> table is admins anyway [name - role] use redis aka db
     use: "private" #group channel
   - name: "menu"
     description: "тест меню"
     keyboard: "main_menu"
-    role: "admin" # придумать отбивку
     use: "private" #group channel
   - name: "menu2"
     description: "тест меню"
