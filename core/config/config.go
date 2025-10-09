@@ -110,7 +110,6 @@ type Command struct {
 	Reply       *string `yaml:"reply,omitempty"`
 	Keyboard    *string `yaml:"keyboard,omitempty"`
 	Form        *string `yaml:"form,omitempty"`
-	Role        *string `yaml:"role,omitempty"`
 	Use         CmdUse  `yaml:"use"`
 }
 
