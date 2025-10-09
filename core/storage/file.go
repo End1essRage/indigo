@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -36,7 +37,7 @@ func (fs *FileStorage) Get(ctx context.Context, collection string, count int, qu
 	collectionPath := filepath.Join(fs.basePath, collection)
 
 	if _, err := os.Stat(collectionPath); os.IsNotExist(err) {
-		return []Entity{}, nil
+		return nil, fmt.Errorf("коллекция не существует: %w", err)
 	}
 
 	files, err := fs.listCollectionFiles(collectionPath)
@@ -45,7 +46,7 @@ func (fs *FileStorage) Get(ctx context.Context, collection string, count int, qu
 	}
 
 	if len(files) == 0 {
-		return []Entity{}, nil
+		return nil, NewNotFoundError(query.ToString())
 	}
 
 	results := make([]Entity, 0, count)
@@ -59,7 +60,7 @@ func (fs *FileStorage) Get(ctx context.Context, collection string, count int, qu
 
 		entity, err := fs.loadAndFilter(ctx, collection, fileName, query)
 		if err != nil {
-			//log
+			logrus.Errorf("ошибка фильтрации сущности %w", err)
 			continue
 		}
 
@@ -72,6 +73,77 @@ func (fs *FileStorage) Get(ctx context.Context, collection string, count int, qu
 	}
 
 	return results, nil
+}
+
+func (fs *FileStorage) GetOne(ctx context.Context, collection string, query QueryNode) (Entity, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("context error: %w", err)
+	}
+
+	collectionPath := filepath.Join(fs.basePath, collection)
+
+	if _, err := os.Stat(collectionPath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("коллекция не существует: %w", err)
+	}
+
+	files, err := fs.listCollectionFiles(collectionPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list files: %w", err)
+	}
+
+	if len(files) == 0 {
+		return nil, NewNotFoundError("в коллекции нет ни одной сущности")
+	}
+
+	for _, fileName := range files {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
+
+		entity, err := fs.loadAndFilter(ctx, collection, fileName, query)
+		if err != nil {
+			logrus.Errorf("ошибка фильтрации сущности %w", err)
+			continue
+		}
+
+		if entity != nil {
+			return *entity, nil
+		}
+	}
+
+	return nil, NewNotFoundError(query.ToString())
+}
+
+func (fs *FileStorage) GetIds(ctx context.Context, collection string, count int, query QueryNode) ([]string, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("context error: %w", err)
+	}
+
+	result := make([]string, 0)
+
+	items, err := fs.Get(ctx, collection, count, query)
+	if err != nil {
+		return result, err
+	}
+
+	for _, e := range items {
+		select {
+		case <-ctx.Done():
+			return result, ctx.Err()
+		default:
+		}
+
+		for k, v := range e {
+			if k == "id" {
+				result = append(result, v.(string))
+				continue
+			}
+		}
+	}
+
+	return result, nil
 }
 
 func (fs *FileStorage) GetById(ctx context.Context, collection string, id string) (Entity, error) {
@@ -179,7 +251,35 @@ func (fs *FileStorage) Update(ctx context.Context, collection string, query Quer
 	if err := ctx.Err(); err != nil {
 		return 0, fmt.Errorf("context error: %w", err)
 	}
-	return 0, nil
+
+	ids, err := fs.GetIds(ctx, collection, 0, query)
+	if err != nil {
+		if errors.Is(err, &NotFoundError{}) {
+			return 0, err
+		} else {
+			logrus.Error("непредвиденная ошибка %w", err)
+			return 0, fmt.Errorf("ошибка получения списка сущностей: %w", err)
+		}
+	}
+
+	counter := 0
+
+	for _, id := range ids {
+		select {
+		case <-ctx.Done():
+			return counter, ctx.Err()
+		default:
+		}
+
+		if err := fs.UpdateById(ctx, collection, id, entity); err != nil {
+			logrus.Errorf("ошибка обновления сущности id:%s", id)
+			continue
+		}
+
+		counter++
+	}
+
+	return counter, nil
 }
 
 func (fs *FileStorage) DeleteById(ctx context.Context, collection string, id string) error {
@@ -207,7 +307,35 @@ func (fs *FileStorage) Delete(ctx context.Context, collection string, query Quer
 	if err := ctx.Err(); err != nil {
 		return 0, fmt.Errorf("context error: %w", err)
 	}
-	return 0, nil
+
+	ids, err := fs.GetIds(ctx, collection, 0, query)
+	if err != nil {
+		if errors.Is(err, &NotFoundError{}) {
+			return 0, err
+		} else {
+			logrus.Error("непредвиденная ошибка %w", err)
+			return 0, fmt.Errorf("ошибка получения списка сущностей: %w", err)
+		}
+	}
+
+	counter := 0
+
+	for _, id := range ids {
+		select {
+		case <-ctx.Done():
+			return counter, ctx.Err()
+		default:
+		}
+
+		if err := fs.DeleteById(ctx, collection, id); err != nil {
+			logrus.Errorf("ошибка удаления сущности id:%s", id)
+			continue
+		}
+
+		counter++
+	}
+
+	return counter, nil
 }
 
 // loadAndFilter загружает entity и применяет фильтр
@@ -317,7 +445,7 @@ func (fs *FileStorage) load(ctx context.Context, docFolder, docPath string, resu
 	// Если файла нет - возвращаем nil без ошибки
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		logrus.Debug("no file")
-		return nil
+		return NewNotFoundError("no file")
 	}
 
 	fi, err := os.Stat(path)
@@ -349,7 +477,7 @@ func (fs *FileStorage) delete(ctx context.Context, docFolder string, id uint32) 
 
 	// Проверяем существование файла
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return fmt.Errorf("file not found: %s", path)
+		return NewNotFoundError("no file")
 	}
 
 	// Удаляем файл

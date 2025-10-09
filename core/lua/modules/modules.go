@@ -27,11 +27,37 @@ func (m *BotModule) Apply(L *lua.LState) {
 
 // Storage
 func (m *StorageModule) Apply(L *lua.LState) {
-	//(collection: string, data: table) -> (ok: bool, id: string)
-	m.applyStorageCreate(L, "storage_save")
+	/*
+		query_condition("field", "=", value)
+		query_and(left, right)
+		query_or(left, right)
 
+		local query = query_condition("field", "=", value):and(query_condition("field2", "<", value2))
+		query:or(query_condition("field3", ">", value3))
+	*/
+	m.applyQueryBuilder(L)
+
+	// storage_get(collection, count, query)
+	m.applyStorageGet(L, "storage_get")
 	//(collection: string, id: string) -> (data: table, err?)
-	m.applyStorageGetById(L, "storage_load")
+	m.applyStorageGetById(L, "storage_get_by_id")
+	// storage_get_one(collection, query)
+	m.applyStorageGetOne(L, "storage_get_one")
+	// (collection, count, query)
+	m.applyStorageGetIds(L, "storage_get_ids")
+
+	//(collection: string, data: table) -> (ok: bool, id: string)
+	m.applyStorageCreate(L, "storage_create")
+
+	// storage_update(collection, query, data)
+	m.applyStorageUpdate(L, "storage_update")
+	// (collection, id, data)
+	m.applyStorageUpdateById(L, "storage_update_by_id")
+
+	// (collection, query)
+	m.applyStorageDelete(L, "storage_delete")
+	// (collection, id)
+	m.applyStorageDeleteById(L, "storage_delete_by_id")
 }
 
 // Cache
