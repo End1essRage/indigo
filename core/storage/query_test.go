@@ -6,7 +6,7 @@ func TestCondition(t *testing.T) {
 	t.Run("Test toString", func(t *testing.T) {
 		cond := &Condition{"name", "=", "eric"}
 
-		should := "name = 'eric'"
+		should := "name = eric"
 		str := cond.ToString()
 
 		if str != should {

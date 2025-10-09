@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -27,43 +26,6 @@ func NewFileStorage(basePath string) (*FileStorage, error) {
 
 func (fs *FileStorage) getPath(docFolder, docPath string) string {
 	return filepath.Join(fs.basePath, docFolder, docPath)
-}
-
-func (fs *FileStorage) fileWorker(
-	ctx context.Context,
-	wg *sync.WaitGroup,
-	collection string,
-	query QueryNode,
-	files <-chan string,
-	results chan<- Entity,
-) {
-	defer wg.Done()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case fileName, ok := <-files:
-			if !ok {
-				return
-			}
-
-			// Читаем и проверяем entity
-			entity, err := fs.loadAndFilter(ctx, collection, fileName, query)
-			if err != nil {
-				// Логируем ошибку, но продолжаем обработку
-				continue
-			}
-
-			if entity != nil {
-				select {
-				case <-ctx.Done():
-					return
-				case results <- *entity:
-				}
-			}
-		}
-	}
 }
 
 func (fs *FileStorage) Get(ctx context.Context, collection string, count int, query QueryNode) ([]Entity, error) {
