@@ -2,6 +2,7 @@
 .vscode
 .env
 /storage
+/e2e/storage
 /data
 mongo_data
 redis_data

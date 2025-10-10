@@ -6,6 +6,7 @@ import (
 
 	h "github.com/end1essrage/indigo-core/lua/helpers"
 	"github.com/end1essrage/indigo-core/storage"
+	"github.com/sirupsen/logrus"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -52,7 +53,7 @@ func (m *StorageModule) applyStorageCreate(L *lua.LState, cmd string) {
 
 		L.Push(lua.LTrue)
 		L.Push(lua.LString(id))
-		return 1
+		return 2
 	}))
 }
 
@@ -64,20 +65,25 @@ func (m *StorageModule) applyStorageGetById(L *lua.LState, cmd string) {
 		result, err := m.storage.GetById(context.TODO(), collection, id)
 		if err != nil {
 			// Возвращаем пустую таблицу при ошибках
-			L.Push(L.NewTable())
+			L.Push(lua.LNil)
 			L.Push(lua.LString(err.Error()))
 			return 2
 		}
 
 		// Если файл отсутствовал или пустой
 		if result == nil {
-			L.Push(L.NewTable())
-			return 1
+			L.Push(lua.LNil)
+			L.Push(lua.LNil)
+			return 2
 		}
 
+		logrus.Debugf("get by id result %+v", result)
 		tbl := h.ConvertToLuaTable(L, result)
+		logrus.Debugf("get by id result table %+v", tbl)
+
 		L.Push(tbl)
-		return 1
+		L.Push(lua.LNil)
+		return 2
 	}))
 }
 
@@ -121,18 +127,22 @@ func (m *StorageModule) applyStorageGetOne(L *lua.LState, cmd string) {
 
 		result, err := m.storage.GetOne(context.TODO(), collection, query)
 		if err != nil {
+			logrus.Errorf("[ENGINE] error GetOne %s", err.Error())
 			L.Push(L.NewTable())
 			L.Push(lua.LString(err.Error()))
 			return 2
 		}
 
 		if result == nil {
-			L.Push(L.NewTable())
-			return 1
+			logrus.Debug("не найдено")
+			L.Push(lua.LNil)
+			L.Push(lua.LNil)
+			return 2
 		}
 
 		L.Push(h.ConvertToLuaTable(L, result))
-		return 1
+		L.Push(lua.LNil)
+		return 2
 	}))
 }
 
@@ -256,13 +266,16 @@ func (m *StorageModule) applyStorageDeleteById(L *lua.LState, cmd string) {
 
 		err := m.storage.DeleteById(context.TODO(), collection, id)
 		if err != nil {
+			logrus.Errorf("[ENGINE] %s", err.Error())
+
 			L.Push(lua.LFalse)
 			L.Push(lua.LString(err.Error()))
 			return 2
 		}
 
 		L.Push(lua.LTrue)
-		return 1
+		L.Push(lua.LString(""))
+		return 2
 	}))
 }
 

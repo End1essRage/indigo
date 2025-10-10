@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -149,7 +148,7 @@ func (fs *FileStorage) GetIds(ctx context.Context, collection string, count int,
 func (fs *FileStorage) GetById(ctx context.Context, collection string, id string) (Entity, error) {
 	// Проверка контекста
 	if err := ctx.Err(); err != nil {
-		return NewEntity(), fmt.Errorf("context error: %w", err)
+		return nil, fmt.Errorf("context error: %w", err)
 	}
 
 	errChan := make(chan error, 1)
@@ -158,7 +157,7 @@ func (fs *FileStorage) GetById(ctx context.Context, collection string, id string
 	go func() {
 		var result Entity
 		if err := fs.load(ctx, collection, id, &result); err != nil {
-			errChan <- fmt.Errorf("ошибка загрузки сущности: %w", err)
+			errChan <- NewNotFoundError("no found")
 			return
 		}
 		resultChan <- result
@@ -166,9 +165,13 @@ func (fs *FileStorage) GetById(ctx context.Context, collection string, id string
 
 	select {
 	case <-ctx.Done():
-		return NewEntity(), fmt.Errorf("operation cancelled: %w", ctx.Err())
+		return nil, fmt.Errorf("operation cancelled: %w", ctx.Err())
 	case err := <-errChan:
-		return NewEntity(), err
+		if _, ok := err.(*NotFoundError); ok {
+			return nil, nil
+		}
+
+		return nil, err
 	case data := <-resultChan:
 		return data, nil
 	}
@@ -196,8 +199,10 @@ func (fs *FileStorage) Create(ctx context.Context, collection string, entity Ent
 	case <-ctx.Done():
 		return "", fmt.Errorf("operation cancelled: %w", ctx.Err())
 	case err := <-errChan:
+		logrus.Errorf("err creation with id %s", err.Error())
 		return "", err
 	case data := <-resultChan:
+		logrus.Debugf("created with id %s", data)
 		return data, nil
 	}
 }
@@ -254,8 +259,9 @@ func (fs *FileStorage) Update(ctx context.Context, collection string, query Quer
 
 	ids, err := fs.GetIds(ctx, collection, 0, query)
 	if err != nil {
-		if errors.Is(err, &NotFoundError{}) {
-			return 0, err
+		// если не найдено не кидаем ошибку
+		if _, ok := err.(*NotFoundError); ok {
+			return 0, nil
 		} else {
 			logrus.Error("непредвиденная ошибка %w", err)
 			return 0, fmt.Errorf("ошибка получения списка сущностей: %w", err)
@@ -293,12 +299,13 @@ func (fs *FileStorage) DeleteById(ctx context.Context, collection string, id str
 		return fmt.Errorf("ошибка поиска по айди: %w", err)
 	}
 
-	ids, err := strconv.ParseUint(id, 10, 32)
+	err = fs.delete(ctx, collection, id)
 	if err != nil {
-		return fmt.Errorf("context error: %w", err)
+		logrus.Errorf("[STORAGE] error %s", err.Error())
+		return err
 	}
 
-	err = fs.delete(ctx, collection, uint32(ids))
+	logrus.Debugf("[STORAGE] удалено %s", id)
 
 	return err
 }
@@ -310,8 +317,8 @@ func (fs *FileStorage) Delete(ctx context.Context, collection string, query Quer
 
 	ids, err := fs.GetIds(ctx, collection, 0, query)
 	if err != nil {
-		if errors.Is(err, &NotFoundError{}) {
-			return 0, err
+		if _, ok := err.(*NotFoundError); ok {
+			return 0, nil
 		} else {
 			logrus.Error("непредвиденная ошибка %w", err)
 			return 0, fmt.Errorf("ошибка получения списка сущностей: %w", err)
@@ -444,8 +451,7 @@ func (fs *FileStorage) load(ctx context.Context, docFolder, docPath string, resu
 
 	// Если файла нет - возвращаем nil без ошибки
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		logrus.Debug("no file")
-		return NewNotFoundError("no file")
+		return fmt.Errorf("ошибка загрузки сущности: %w", err)
 	}
 
 	fi, err := os.Stat(path)
@@ -467,17 +473,18 @@ func (fs *FileStorage) load(ctx context.Context, docFolder, docPath string, resu
 }
 
 // delete удаляет файл по ID из указанной коллекции
-func (fs *FileStorage) delete(ctx context.Context, docFolder string, id uint32) error {
+func (fs *FileStorage) delete(ctx context.Context, docFolder string, id string) error {
 	if err := ctx.Err(); err != nil {
 		return fmt.Errorf("context error: %w", err)
 	}
 
 	// Формируем путь к файлу
-	path := fs.getPath(docFolder, fmt.Sprint(id))
+	path := fs.getPath(docFolder, id)
+	logrus.Debugf("deleting path %s", path)
 
 	// Проверяем существование файла
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return NewNotFoundError("no file")
+		return NewNotFoundError(fmt.Sprintf("no file %s", path))
 	}
 
 	// Удаляем файл

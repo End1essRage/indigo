@@ -18,7 +18,7 @@ func (m *CacheModule) applyGet(L *lua.LState, cmd string) {
 			L.Push(lua.LString(value))
 		}
 
-		return 0
+		return 1
 	}))
 }
 

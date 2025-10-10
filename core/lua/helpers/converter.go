@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/end1essrage/indigo-core/storage"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -13,6 +14,10 @@ func ConvertToLuaTable(L *lua.LState, value interface{}) *lua.LTable {
 	tbl := L.NewTable()
 
 	switch v := value.(type) {
+	case storage.Entity:
+		for key, val := range v {
+			tbl.RawSetString(key, ConvertValue(L, val))
+		}
 	case map[string]interface{}:
 		for key, val := range v {
 			tbl.RawSetString(key, ConvertValue(L, val))
