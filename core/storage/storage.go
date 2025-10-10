@@ -10,10 +10,9 @@ func NewEntity() Entity {
 
 type Storage interface {
 	//0 count - all
-	//TODO query
 	Get(ctx context.Context, collection string, count int, query QueryNode) ([]Entity, error)
 	GetIds(ctx context.Context, collection string, count int, query QueryNode) ([]string, error)
-	//GetOne(ctx context.Context, collection string, query QueryNode) ([]Entity, error)
+	GetOne(ctx context.Context, collection string, query QueryNode) (Entity, error)
 	GetById(ctx context.Context, collection string, id string) (Entity, error)
 
 	Create(ctx context.Context, collection string, entity Entity) (string, error)

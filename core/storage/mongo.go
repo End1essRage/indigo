@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
@@ -30,7 +31,7 @@ func (fs *MongoStorage) Get(ctx context.Context, collection string, count int, q
 	//подключаемся к монге
 	client, err := mongo.Connect(options.Client().ApplyURI(fs.uri))
 	if err != nil {
-		logrus.Errorf("Ошибка подключения %w", err)
+		logrus.Errorf("Ошибка подключения %s", err.Error())
 		return nil, err
 	}
 	// закрываем подключение в конце работы
@@ -86,7 +87,7 @@ func (fs *MongoStorage) GetIds(ctx context.Context, collection string, count int
 	//подключаемся к монге
 	client, err := mongo.Connect(options.Client().ApplyURI(fs.uri))
 	if err != nil {
-		logrus.Errorf("Ошибка подключения %w", err)
+		logrus.Errorf("Ошибка подключения %s", err.Error())
 		return nil, err
 	}
 	// закрываем подключение в конце работы
@@ -144,7 +145,7 @@ func (fs *MongoStorage) GetOne(ctx context.Context, collection string, query Que
 	//подключаемся к монге
 	client, err := mongo.Connect(options.Client().ApplyURI(fs.uri))
 	if err != nil {
-		logrus.Errorf("Ошибка подключения %w", err)
+		logrus.Errorf("Ошибка подключения %s", err.Error())
 		return nil, err
 	}
 	// закрываем подключение в конце работы
@@ -185,7 +186,7 @@ func (fs *MongoStorage) GetById(ctx context.Context, collection string, id strin
 func (fs *MongoStorage) Create(ctx context.Context, collection string, entity Entity) (string, error) {
 	client, err := mongo.Connect(options.Client().ApplyURI(fs.uri))
 	if err != nil {
-		logrus.Errorf("Ошибка подключения %w", err)
+		logrus.Errorf("ошибка подключения %s", err.Error())
 	}
 	defer client.Disconnect(context.TODO())
 
@@ -204,19 +205,124 @@ func (fs *MongoStorage) Create(ctx context.Context, collection string, entity En
 }
 
 func (fs *MongoStorage) UpdateById(ctx context.Context, collection string, id string, entity Entity) error {
+	client, err := mongo.Connect(options.Client().ApplyURI(fs.uri))
+	if err != nil {
+		logrus.Errorf("ошибка подключения %s", err.Error())
+	}
+	defer client.Disconnect(context.TODO())
+
+	col := client.Database(fs.db).Collection(collection)
+
+	mId, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+	update := bson.M{"$set": entity}
+
+	result, err := col.UpdateOne(ctx, bson.M{"_id": mId}, update)
+	if err != nil {
+		return err
+	}
+
+	if !result.Acknowledged {
+		err = fmt.Errorf("не принято базой")
+		return err
+	}
+
+	if result.ModifiedCount == 0 {
+		err = fmt.Errorf("ни одной не обновлено")
+		return err
+	}
+
 	return nil
 }
 
 func (fs *MongoStorage) Update(ctx context.Context, collection string, query QueryNode, entity Entity) (int, error) {
-	return 0, nil
+	client, err := mongo.Connect(options.Client().ApplyURI(fs.uri))
+	if err != nil {
+		logrus.Errorf("ошибка подключения %s", err.Error())
+	}
+	defer client.Disconnect(context.TODO())
+
+	col := client.Database(fs.db).Collection(collection)
+
+	update := bson.M{"$set": entity}
+
+	result, err := col.UpdateMany(ctx, query.Bson(), update)
+	if err != nil {
+		return 0, err
+	}
+
+	if !result.Acknowledged {
+		err = fmt.Errorf("не принято базой")
+		return 0, err
+	}
+
+	if result.ModifiedCount == 0 {
+		err = fmt.Errorf("ни одной не обновлено")
+		return 0, err
+	}
+
+	return int(result.ModifiedCount), nil
 }
 
 func (fs *MongoStorage) DeleteById(ctx context.Context, collection string, id string) error {
+	client, err := mongo.Connect(options.Client().ApplyURI(fs.uri))
+	if err != nil {
+		logrus.Errorf("ошибка подключения %s", err.Error())
+	}
+	defer client.Disconnect(context.TODO())
+
+	col := client.Database(fs.db).Collection(collection)
+
+	mId, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+
+	result, err := col.DeleteOne(ctx, bson.M{"_id": mId})
+	if err != nil {
+		return err
+	}
+
+	if !result.Acknowledged {
+		err = fmt.Errorf("не принято базой")
+		return err
+	}
+
+	if result.DeletedCount == 0 {
+		err = fmt.Errorf("ни одной не удалено")
+		return err
+	}
+
 	return nil
 }
 
 func (fs *MongoStorage) Delete(ctx context.Context, collection string, query QueryNode) (int, error) {
-	return 0, nil
+	client, err := mongo.Connect(options.Client().ApplyURI(fs.uri))
+	if err != nil {
+		logrus.Errorf("ошибка подключения %s", err.Error())
+	}
+	defer client.Disconnect(context.TODO())
+
+	col := client.Database(fs.db).Collection(collection)
+
+	result, err := col.DeleteMany(ctx, query.Bson())
+	if err != nil {
+		return 0, err
+	}
+
+	if !result.Acknowledged {
+		err = fmt.Errorf("не принято базой")
+		return 0, err
+	}
+
+	if result.DeletedCount == 0 {
+		err = fmt.Errorf("ни одной не удалено")
+		return 0, err
+	}
+
+	return int(result.DeletedCount), nil
 }
 
 func ping(uri string) error {

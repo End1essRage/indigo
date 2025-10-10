@@ -60,7 +60,7 @@ func (fs *FileStorage) Get(ctx context.Context, collection string, count int, qu
 
 		entity, err := fs.loadAndFilter(ctx, collection, fileName, query)
 		if err != nil {
-			logrus.Errorf("ошибка фильтрации сущности %w", err)
+			logrus.Errorf("ошибка фильтрации сущности %s", err.Error())
 			continue
 		}
 
@@ -104,7 +104,7 @@ func (fs *FileStorage) GetOne(ctx context.Context, collection string, query Quer
 
 		entity, err := fs.loadAndFilter(ctx, collection, fileName, query)
 		if err != nil {
-			logrus.Errorf("ошибка фильтрации сущности %w", err)
+			logrus.Errorf("ошибка фильтрации сущности %s", err.Error())
 			continue
 		}
 

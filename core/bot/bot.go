@@ -32,6 +32,7 @@ func (t *TgBot) Send(msg tgbotapi.MessageConfig) error {
 	return err
 }
 
+// автоматически если много кнопок реализовать переключалку через сервис
 func (t *TgBot) SendKeyboard(chatId int64, text string, mesh MeshInlineKeyboard) error {
 	msg := tgbotapi.NewMessage(chatId, text)
 	logrus.Infof("%+v", mesh)
