@@ -8,7 +8,7 @@ log("Starting storage tests...")
 local function test_create()
     local test_data = {
         name = "Test User",
-        score = 100,
+        score = 99,
         tags = {"test", "demo"},
         created_at = os.time()
     }
@@ -44,30 +44,6 @@ local function test_get_by_id(id)
     end
 end
 
--- Тест 3: Поиск с условиями
-local function test_query()
-    -- Простое условие
-    local simple_query = query_condition("score", ">", 50)
-    local results = storage_get("test_collection", 10, simple_query)
-    table.insert(test_results, "✅ SIMPLE QUERY: Найдено документов: " .. #results)
-    
-    -- Сложное условие с AND
-    local complex_query = query_and(
-        query_condition("score", ">=", 100),
-        query_condition("name", "=", "Test User")
-    )
-    results = storage_get("test_collection", 10, complex_query)
-    table.insert(test_results, "✅ COMPLEX AND QUERY: Найдено: " .. #results)
-    
-    -- Условие с OR
-    local or_query = query_or(
-        query_condition("score", "<", 50),
-        query_condition("score", ">", 150)
-    )
-    results = storage_get("test_collection", 10, or_query)
-    table.insert(test_results, "✅ OR QUERY: Найдено: " .. #results)
-end
-
 -- Тест 4: Обновление
 local function test_update(id)
     local update_data = {
@@ -93,15 +69,31 @@ local function test_bulk_update()
         bulk_updated = true
     }
     
-    storage_update("test_collection", query, update_data)
-    table.insert(test_results, "✅ BULK UPDATE: Выполнено")
+    local count, err = storage_update("test_collection", query, update_data)
+    local should = 5
+    if err then 
+        table.insert(test_results, "❌ BULK UPDATE: ошибка" .. err)
+    else 
+        if count == should then
+            table.insert(test_results, "✅ BULK UPDATE: выполнено")
+        else 
+            table.insert(test_results, "❌ BULK UPDATE: неправильное кол-во обновившехся")
+        end
+    end
+   
 end
 
 -- Тест 6: Получение только ID
 local function test_get_ids()
     local query = query_condition("score", ">", 0)
-    local ids = storage_get_ids("test_collection", 5, query)
-    table.insert(test_results, "✅ GET IDS: Получено ID: " .. #ids)
+    local ids = storage_get_ids("test_collection", 10, query)
+    local should = 5
+    if #ids ~= should then 
+        table.insert(test_results, "❌ GET IDS: Получено ID: " .. #ids .. " Должно: " .. should)
+    else
+        table.insert(test_results, "✅ GET IDS: Получено ID: " .. #ids)
+    end
+    
 end
 
 -- Тест 7: Удаление
@@ -123,16 +115,167 @@ local function test_delete(id)
     end
 end
 
+local function seed_data()
+    local count, err = storage_delete("test_collection", query_condition("_id", "!=", "a"))
+    if err then
+        table.insert(test_results, "❌ CREATE: ошибка удаления старых данных" .. err)
+    end
+
+    local test_data = {
+        {
+            name = "Test User1",
+            score = 50,
+            city = "KAZ",
+            tags = {"test", "demo"},
+            created_at = os.time()
+        },
+        {
+            name = "Test User2",
+            score = 99,
+            city = "KAZ",
+            tags = {"test", "demo"},
+            created_at = os.time()
+        },
+        {
+            name = "Test User3",
+            score = 101,
+            city = "MOS",
+            tags = {"test", "demo"},
+            created_at = os.time()
+        },
+        {
+            name = "Test User4",
+            score = 100,
+            city = "MOS",
+            tags = {"test", "demo"},
+            created_at = os.time()
+        },
+        {
+            name = "Test User5",
+            score = 49,
+            city = "MOS",
+            tags = {"test", "demo"},
+            created_at = os.time()
+        },
+    }
+    
+    local ok1, id1 = storage_create("test_collection", test_data[1])
+    local ok2, id2 = storage_create("test_collection", test_data[2])
+    local ok3, id3 = storage_create("test_collection", test_data[3])
+    local ok4, id4 = storage_create("test_collection", test_data[4])
+    local ok5, id5 = storage_create("test_collection", test_data[5])
+
+    if ok1 and ok2 and ok3 and ok4 and ok5 then
+        log("created")
+
+        table.insert(test_results, "✅ CREATE: Документы созданы с ID")
+        return id
+    else
+        log("not created")
+
+        table.insert(test_results, "❌ CREATE: Ошибка создания")
+        return nil
+    end
+end
+
+-- Тест 3: Поиск с условиями
+local function test_query()
+    -- Простое условие
+    local simple_query = query_condition("score", ">", 50)
+    local should = 3
+    local results, err = storage_get("test_collection", 10, simple_query)
+    if err then
+        table.insert(test_results, "❌ SIMPLE QUERY: Ошибка: " .. err)   
+    else
+        if should ~= #results then
+            table.insert(test_results, "❌ SIMPLE QUERY: Найдено документов: " .. #results .. " Должно: " .. should)     
+        else
+            table.insert(test_results, "✅ SIMPLE QUERY: Найдено документов: " .. #results)     
+        end
+    end
+        
+    
+                                                       
+    
+    -- Сложное условие с AND
+    local complex_query = query_and(
+        query_condition("city", "=", "MOS"),
+        query_condition("score", ">=", 100)
+    )
+    should = 2
+    results = storage_get("test_collection", 10, complex_query)
+    if err then
+        table.insert(test_results, "❌ AND QUERY: Ошибка: " .. err)   
+    else
+        if should ~= #results then
+            table.insert(test_results, "❌ AND QUERY:: Найдено документов: " .. #results .. " Должно: " .. should)  
+        else
+            table.insert(test_results, "✅ AND QUERY: Найдено документов: " .. #results)     
+        end
+    end
+    
+    -- Условие с OR
+    local or_query = query_or(
+        query_condition("city", "=", "KAZ"),
+        query_condition("score", ">", 100)
+    )
+    should = 3
+    results = storage_get("test_collection", 10, or_query)
+    if err then
+        table.insert(test_results, "❌ OR QUERY: Ошибка: " .. err)   
+    else
+        if should ~= #results then
+            table.insert(test_results, "❌ OR QUERY: Найдено документов: " .. #results .. " Должно: " .. should)     
+        else
+            table.insert(test_results, "✅ OR QUERY: Найдено документов: " .. #results)     
+        end
+    end
+
+    -- Условие возвращающее пустоту
+    local emp_query = query_and(
+        query_condition("city", "=", "KAZ"),
+        query_condition("score", ">", 1000)
+    )
+    should = 0
+    results = storage_get("test_collection", 10, emp_query)
+    if err then
+        table.insert(test_results, "❌ NOITEMS QUERY: Ошибка: " .. err)   
+    else
+        if should ~= #results then
+            table.insert(test_results, "❌ NOITEMS QUERY: Найдено документов: " .. #results .. " Должно: " .. should)     
+        else
+            table.insert(test_results, "✅ NOITEMS QUERY: Найдено документов: " .. #results)     
+        end
+    end
+
+        -- пустая квери
+        should = 5
+        results = storage_get("test_collection", 10)
+        if err then
+            table.insert(test_results, "❌ NO QUERY: Ошибка: " .. err)   
+        else
+            if should ~= #results then
+                table.insert(test_results, "❌ NO QUERY: Найдено документов: " .. #results .. " Должно: " .. should)     
+            else
+                table.insert(test_results, "✅ NO QUERY: Найдено документов: " .. #results)     
+            end
+        end
+end
+
 -- Выполняем тесты
 local test_id = test_create()
 if test_id then
     test_get_by_id(test_id)
-    test_query()
     test_update(test_id)
-    test_bulk_update()
-    test_get_ids()
+
     test_delete(test_id)
 end
+
+
+seed_data()
+test_query()
+test_bulk_update()
+test_get_ids()
 
 -- Отправляем результаты
 local message = "📊 *Результаты тестов Storage:*\n\n" .. table.concat(test_results, "\n")

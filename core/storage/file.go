@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -124,18 +123,18 @@ func (fs *FileStorage) GetIds(ctx context.Context, collection string, count int,
 
 	items, err := fs.Get(ctx, collection, count, query)
 	if err != nil {
-		return result, err
+		return nil, err
 	}
 
 	for _, e := range items {
 		select {
 		case <-ctx.Done():
-			return result, ctx.Err()
+			return nil, ctx.Err()
 		default:
 		}
 
 		for k, v := range e {
-			if k == "id" {
+			if k == "_id" {
 				result = append(result, v.(string))
 				continue
 			}
@@ -167,10 +166,6 @@ func (fs *FileStorage) GetById(ctx context.Context, collection string, id string
 	case <-ctx.Done():
 		return nil, fmt.Errorf("operation cancelled: %w", ctx.Err())
 	case err := <-errChan:
-		if _, ok := err.(*NotFoundError); ok {
-			return nil, nil
-		}
-
 		return nil, err
 	case data := <-resultChan:
 		return data, nil
@@ -187,7 +182,7 @@ func (fs *FileStorage) Create(ctx context.Context, collection string, entity Ent
 	resultChan := make(chan string, 1)
 
 	go func() {
-		id, err := fs.save(ctx, 0, collection, entity)
+		id, err := fs.save(ctx, "", collection, entity)
 		if err != nil {
 			errChan <- fmt.Errorf("ошибка сохранения сущности: %w", err)
 			return
@@ -219,7 +214,7 @@ func (fs *FileStorage) UpdateById(ctx context.Context, collection string, id str
 		var result Entity
 		err := fs.load(ctx, collection, id, &result)
 		if err != nil {
-			errChan <- fmt.Errorf("ошибка загрузки: %w", err)
+			errChan <- err
 			return
 		}
 
@@ -227,13 +222,7 @@ func (fs *FileStorage) UpdateById(ctx context.Context, collection string, id str
 			result[k] = v
 		}
 
-		ids, err := strconv.ParseUint(id, 10, 32)
-		if err != nil {
-			errChan <- fmt.Errorf("ошибка парсинга id: %w", err)
-			return
-		}
-
-		_, err = fs.save(ctx, uint32(ids), collection, result)
+		_, err = fs.save(ctx, id, collection, result)
 		if err != nil {
 			errChan <- fmt.Errorf("ошибка сохранения: %w", err)
 			return
@@ -259,9 +248,8 @@ func (fs *FileStorage) Update(ctx context.Context, collection string, query Quer
 
 	ids, err := fs.GetIds(ctx, collection, 0, query)
 	if err != nil {
-		// если не найдено не кидаем ошибку
 		if _, ok := err.(*NotFoundError); ok {
-			return 0, nil
+			return 0, err
 		} else {
 			logrus.Error("непредвиденная ошибка %w", err)
 			return 0, fmt.Errorf("ошибка получения списка сущностей: %w", err)
@@ -293,13 +281,7 @@ func (fs *FileStorage) DeleteById(ctx context.Context, collection string, id str
 		return fmt.Errorf("context error: %w", err)
 	}
 
-	var result Entity
-	err := fs.load(ctx, collection, id, &result)
-	if err != nil {
-		return fmt.Errorf("ошибка поиска по айди: %w", err)
-	}
-
-	err = fs.delete(ctx, collection, id)
+	err := fs.delete(ctx, collection, id)
 	if err != nil {
 		logrus.Errorf("[STORAGE] error %s", err.Error())
 		return err
@@ -318,7 +300,7 @@ func (fs *FileStorage) Delete(ctx context.Context, collection string, query Quer
 	ids, err := fs.GetIds(ctx, collection, 0, query)
 	if err != nil {
 		if _, ok := err.(*NotFoundError); ok {
-			return 0, nil
+			return 0, err
 		} else {
 			logrus.Error("непредвиденная ошибка %w", err)
 			return 0, fmt.Errorf("ошибка получения списка сущностей: %w", err)
@@ -397,15 +379,16 @@ func (fs *FileStorage) listCollectionFiles(collectionPath string) ([]string, err
 }
 
 // save с атомарной записью (БЕЗ МЬЮТЕКСА!)
-func (fs *FileStorage) save(ctx context.Context, id uint32, docFolder string, data Entity) (string, error) {
+func (fs *FileStorage) save(ctx context.Context, id string, docFolder string, data Entity) (string, error) {
 	if err := ctx.Err(); err != nil {
 		return "", fmt.Errorf("context error: %w", err)
 	}
 
 	// Генерируем ID если нужно
-	if id == 0 {
-		id = uuid.New().ID()
+	if id == "" {
+		id = uuid.New().String()
 	}
+	data["_id"] = id
 
 	path := fs.getPath(docFolder, fmt.Sprint(id))
 
@@ -444,14 +427,14 @@ func (fs *FileStorage) save(ctx context.Context, id uint32, docFolder string, da
 // Каждый os.Open создает отдельный file descriptor
 func (fs *FileStorage) load(ctx context.Context, docFolder, docPath string, result *Entity) error {
 	if err := ctx.Err(); err != nil {
-		fmt.Errorf("context error: %w", err)
+		return fmt.Errorf("context error: %w", err)
 	}
 
 	path := fs.getPath(docFolder, docPath)
 
 	// Если файла нет - возвращаем nil без ошибки
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return fmt.Errorf("ошибка загрузки сущности: %w", err)
+		return NewNotFoundError("no found")
 	}
 
 	fi, err := os.Stat(path)

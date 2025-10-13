@@ -50,7 +50,8 @@ func (fs *MongoStorage) Get(ctx context.Context, collection string, count int, q
 	//получаем курсор
 	cur, err := col.Find(ctx, filter)
 	if err != nil {
-		logrus.Fatal(err)
+		logrus.Error(err)
+		return nil, err
 	}
 	//закрываем в конце
 	defer cur.Close(ctx)
@@ -66,7 +67,7 @@ func (fs *MongoStorage) Get(ctx context.Context, collection string, count int, q
 		//получаем и разбираем результат
 		var result Entity
 		if err := cur.Decode(&result); err != nil {
-			logrus.Fatal(err)
+			logrus.Error(err)
 		}
 
 		//складываем в результат
@@ -75,7 +76,7 @@ func (fs *MongoStorage) Get(ctx context.Context, collection string, count int, q
 
 	//проверяем были ли ошибки
 	if err := cur.Err(); err != nil {
-		logrus.Fatal(err)
+		logrus.Error(err)
 		return results, err
 	}
 
@@ -106,7 +107,8 @@ func (fs *MongoStorage) GetIds(ctx context.Context, collection string, count int
 	//получаем курсор
 	cur, err := col.Find(ctx, filter)
 	if err != nil {
-		logrus.Fatal(err)
+		logrus.Error(err)
+		return nil, err
 	}
 	//закрываем в конце
 	defer cur.Close(ctx)
@@ -125,7 +127,7 @@ func (fs *MongoStorage) GetIds(ctx context.Context, collection string, count int
 		}
 
 		if err := cur.Decode(&result); err != nil {
-			logrus.Fatal(err)
+			logrus.Error(err)
 		}
 
 		//складываем в результат
@@ -134,7 +136,7 @@ func (fs *MongoStorage) GetIds(ctx context.Context, collection string, count int
 
 	//проверяем были ли ошибки
 	if err := cur.Err(); err != nil {
-		logrus.Fatal(err)
+		logrus.Error(err)
 		return results, err
 	}
 
@@ -180,7 +182,7 @@ func (fs *MongoStorage) GetOne(ctx context.Context, collection string, query Que
 }
 
 func (fs *MongoStorage) GetById(ctx context.Context, collection string, id string) (Entity, error) {
-	return nil, nil
+	return fs.GetOne(ctx, collection, &Condition{"_id", "=", id})
 }
 
 func (fs *MongoStorage) Create(ctx context.Context, collection string, entity Entity) (string, error) {
@@ -221,6 +223,12 @@ func (fs *MongoStorage) UpdateById(ctx context.Context, collection string, id st
 
 	result, err := col.UpdateOne(ctx, bson.M{"_id": mId}, update)
 	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			err = NewNotFoundError("not found")
+
+			logrus.Info(err)
+		}
+
 		return err
 	}
 
@@ -250,6 +258,11 @@ func (fs *MongoStorage) Update(ctx context.Context, collection string, query Que
 
 	result, err := col.UpdateMany(ctx, query.Bson(), update)
 	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			err = NewNotFoundError("not found")
+
+			logrus.Info(err)
+		}
 		return 0, err
 	}
 
@@ -282,6 +295,11 @@ func (fs *MongoStorage) DeleteById(ctx context.Context, collection string, id st
 
 	result, err := col.DeleteOne(ctx, bson.M{"_id": mId})
 	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			err = NewNotFoundError("not found")
+
+			logrus.Info(err)
+		}
 		return err
 	}
 
@@ -309,6 +327,11 @@ func (fs *MongoStorage) Delete(ctx context.Context, collection string, query Que
 
 	result, err := col.DeleteMany(ctx, query.Bson())
 	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			err = NewNotFoundError("not found")
+
+			logrus.Info(err)
+		}
 		return 0, err
 	}
 

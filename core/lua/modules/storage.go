@@ -64,6 +64,13 @@ func (m *StorageModule) applyStorageGetById(L *lua.LState, cmd string) {
 
 		result, err := m.storage.GetById(context.TODO(), collection, id)
 		if err != nil {
+			//при notFound не прокидываем ошибку в луа а просто возвращаем пустоту
+			if _, ok := err.(*storage.NotFoundError); ok {
+				L.Push(lua.LNil)
+				L.Push(lua.LNil)
+				return 2
+			}
+
 			// Возвращаем пустую таблицу при ошибках
 			L.Push(lua.LNil)
 			L.Push(lua.LString(err.Error()))
@@ -72,7 +79,7 @@ func (m *StorageModule) applyStorageGetById(L *lua.LState, cmd string) {
 
 		// Если файл отсутствовал или пустой
 		if result == nil {
-			L.Push(lua.LNil)
+			L.Push(L.NewTable())
 			L.Push(lua.LNil)
 			return 2
 		}
@@ -100,7 +107,14 @@ func (m *StorageModule) applyStorageGet(L *lua.LState, cmd string) {
 
 		results, err := m.storage.Get(context.TODO(), collection, count, query)
 		if err != nil {
-			L.Push(L.NewTable())
+			//при notFound не прокидываем ошибку в луа а просто возвращаем пустоту
+			if _, ok := err.(*storage.NotFoundError); ok {
+				L.Push(L.NewTable())
+				L.Push(lua.LNil)
+				return 2
+			}
+
+			L.Push(lua.LNil)
 			L.Push(lua.LString(err.Error()))
 			return 2
 		}
@@ -127,15 +141,20 @@ func (m *StorageModule) applyStorageGetOne(L *lua.LState, cmd string) {
 
 		result, err := m.storage.GetOne(context.TODO(), collection, query)
 		if err != nil {
-			logrus.Errorf("[ENGINE] error GetOne %s", err.Error())
-			L.Push(L.NewTable())
+			//при notFound не прокидываем ошибку в луа а просто возвращаем пустоту
+			if _, ok := err.(*storage.NotFoundError); ok {
+				L.Push(L.NewTable())
+				L.Push(lua.LNil)
+				return 2
+			}
+
+			L.Push(lua.LNil)
 			L.Push(lua.LString(err.Error()))
 			return 2
 		}
 
 		if result == nil {
-			logrus.Debug("не найдено")
-			L.Push(lua.LNil)
+			L.Push(L.NewTable())
 			L.Push(lua.LNil)
 			return 2
 		}
@@ -159,6 +178,13 @@ func (m *StorageModule) applyStorageGetIds(L *lua.LState, cmd string) {
 
 		ids, err := m.storage.GetIds(context.TODO(), collection, count, query)
 		if err != nil {
+			//при notFound не прокидываем ошибку в луа а просто возвращаем пустоту
+			if _, ok := err.(*storage.NotFoundError); ok {
+				L.Push(L.NewTable())
+				L.Push(lua.LNil)
+				return 2
+			}
+
 			L.Push(L.NewTable())
 			L.Push(lua.LString(err.Error()))
 			return 2
@@ -197,6 +223,13 @@ func (m *StorageModule) applyStorageUpdate(L *lua.LState, cmd string) {
 
 		count, err := m.storage.Update(context.TODO(), collection, query, jsonData)
 		if err != nil {
+			//при notFound не прокидываем ошибку в луа а просто возвращаем пустоту
+			if _, ok := err.(*storage.NotFoundError); ok {
+				L.Push(lua.LNumber(0))
+				L.Push(lua.LNil)
+				return 2
+			}
+
 			L.Push(lua.LNumber(0))
 			L.Push(lua.LString(err.Error()))
 			return 2
@@ -230,13 +263,20 @@ func (m *StorageModule) applyStorageUpdateById(L *lua.LState, cmd string) {
 
 		err = m.storage.UpdateById(context.TODO(), collection, id, jsonData)
 		if err != nil {
+			//при notFound не прокидываем ошибку в луа а просто возвращаем пустоту
+			if _, ok := err.(*storage.NotFoundError); ok {
+				L.Push(lua.LFalse)
+				L.Push(lua.LNil)
+				return 2
+			}
 			L.Push(lua.LFalse)
 			L.Push(lua.LString(err.Error()))
 			return 2
 		}
 
 		L.Push(lua.LTrue)
-		return 1
+		L.Push(lua.LNil)
+		return 2
 	}))
 }
 
@@ -248,13 +288,22 @@ func (m *StorageModule) applyStorageDelete(L *lua.LState, cmd string) {
 
 		count, err := m.storage.Delete(context.TODO(), collection, query)
 		if err != nil {
+			logrus.Debugf("ошибка удаления %w", err)
+			//при notFound не прокидываем ошибку в луа а просто возвращаем пустоту
+			if _, ok := err.(*storage.NotFoundError); ok {
+				L.Push(lua.LNumber(0))
+				L.Push(lua.LNil)
+				return 2
+			}
+
 			L.Push(lua.LNumber(0))
 			L.Push(lua.LString(err.Error()))
 			return 2
 		}
 
 		L.Push(lua.LNumber(count))
-		return 1
+		L.Push(lua.LNil)
+		return 2
 	}))
 }
 
@@ -266,7 +315,12 @@ func (m *StorageModule) applyStorageDeleteById(L *lua.LState, cmd string) {
 
 		err := m.storage.DeleteById(context.TODO(), collection, id)
 		if err != nil {
-			logrus.Errorf("[ENGINE] %s", err.Error())
+			//при notFound не прокидываем ошибку в луа а просто возвращаем пустоту
+			if _, ok := err.(*storage.NotFoundError); ok {
+				L.Push(lua.LNumber(0))
+				L.Push(lua.LNil)
+				return 2
+			}
 
 			L.Push(lua.LFalse)
 			L.Push(lua.LString(err.Error()))
