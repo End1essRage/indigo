@@ -65,13 +65,13 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: ./scripts
+      device: ./e2e/scripts
   config_dir:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: ./config
+      device: ./e2e/config
 
 networks:
   bot-network:

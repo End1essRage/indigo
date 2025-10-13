@@ -193,9 +193,7 @@ local function test_query()
             table.insert(test_results, "✅ SIMPLE QUERY: Найдено документов: " .. #results)     
         end
     end
-        
-    
-                                                       
+                                                           
     
     -- Сложное условие с AND
     local complex_query = query_and(
@@ -203,7 +201,7 @@ local function test_query()
         query_condition("score", ">=", 100)
     )
     should = 2
-    results = storage_get("test_collection", 10, complex_query)
+    results, err = storage_get("test_collection", 10, complex_query)
     if err then
         table.insert(test_results, "❌ AND QUERY: Ошибка: " .. err)   
     else
@@ -220,7 +218,7 @@ local function test_query()
         query_condition("score", ">", 100)
     )
     should = 3
-    results = storage_get("test_collection", 10, or_query)
+    results, err = storage_get("test_collection", 10, or_query)
     if err then
         table.insert(test_results, "❌ OR QUERY: Ошибка: " .. err)   
     else
@@ -237,7 +235,7 @@ local function test_query()
         query_condition("score", ">", 1000)
     )
     should = 0
-    results = storage_get("test_collection", 10, emp_query)
+    results, err = storage_get("test_collection", 10, emp_query)
     if err then
         table.insert(test_results, "❌ NOITEMS QUERY: Ошибка: " .. err)   
     else
@@ -248,18 +246,18 @@ local function test_query()
         end
     end
 
-        -- пустая квери
-        should = 5
-        results = storage_get("test_collection", 10)
-        if err then
-            table.insert(test_results, "❌ NO QUERY: Ошибка: " .. err)   
+    -- пустая квери
+    should = 5
+    results, err = storage_get("test_collection", 10)
+    if err then
+        table.insert(test_results, "❌ NO QUERY: Ошибка: " .. err)   
+    else
+        if should ~= #results then
+            table.insert(test_results, "❌ NO QUERY: Найдено документов: " .. #results .. " Должно: " .. should)     
         else
-            if should ~= #results then
-                table.insert(test_results, "❌ NO QUERY: Найдено документов: " .. #results .. " Должно: " .. should)     
-            else
-                table.insert(test_results, "✅ NO QUERY: Найдено документов: " .. #results)     
-            end
+            table.insert(test_results, "✅ NO QUERY: Найдено документов: " .. #results)     
         end
+    end
 end
 
 -- Выполняем тесты
@@ -267,7 +265,6 @@ local test_id = test_create()
 if test_id then
     test_get_by_id(test_id)
     test_update(test_id)
-
     test_delete(test_id)
 end
 

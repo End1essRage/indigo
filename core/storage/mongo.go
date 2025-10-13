@@ -7,8 +7,9 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"go.mongodb.org/mongo-driver/bson"
+
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
@@ -43,9 +44,14 @@ func (fs *MongoStorage) Get(ctx context.Context, collection string, count int, q
 	//получаем коллекцию
 	col := client.Database(fs.db).Collection(collection)
 
+	var filter any
 	//фильтр из квери
-	filter := query.Bson()
-	logrus.Debug(filter)
+	if query != nil {
+		filter = query.Bson()
+		logrus.Debug(filter)
+	} else {
+		filter = bson.D{{}}
+	}
 
 	//получаем курсор
 	cur, err := col.Find(ctx, filter)
@@ -161,28 +167,35 @@ func (fs *MongoStorage) GetOne(ctx context.Context, collection string, query Que
 
 	//фильтр из квери
 	filter := query.Bson()
-	logrus.Debug(filter)
+	logrus.Debugf("get filter %+v", filter)
 
 	err = col.FindOne(ctx, filter).Decode(&result)
 	if errors.Is(err, mongo.ErrNoDocuments) {
 		err := NewNotFoundError(query.ToString())
 
-		logrus.Info(err)
+		logrus.Infof("getone nodoc %s", err.Error())
 
 		return nil, err
 	} else if err != nil {
 		err := fmt.Errorf("непридвиденная ошибка %w", err)
 
-		logrus.Error(err)
+		logrus.Errorf("getone err %w", err)
 
 		return nil, err
 	}
+
+	logrus.Infof("getone result %+v", err)
 
 	return result, nil
 }
 
 func (fs *MongoStorage) GetById(ctx context.Context, collection string, id string) (Entity, error) {
-	return fs.GetOne(ctx, collection, &Condition{"_id", "=", id})
+	oid, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		logrus.Errorf("Getbyid err: %w", err)
+		return nil, err
+	}
+	return fs.GetOne(ctx, collection, &Condition{"_id", "=", oid})
 }
 
 func (fs *MongoStorage) Create(ctx context.Context, collection string, entity Entity) (string, error) {
@@ -203,7 +216,18 @@ func (fs *MongoStorage) Create(ctx context.Context, collection string, entity En
 		return "", fmt.Errorf("not acknowleged")
 	}
 
-	return result.InsertedID.(primitive.ObjectID).Hex(), nil
+	// Безопасное приведение типа
+	switch oid := result.InsertedID.(type) {
+	case bson.ObjectID: // Для совместимости со старыми версиями
+		return oid.Hex(), nil
+	default:
+		// Если это строка (когда _id задан вручную)
+		if strID, ok := result.InsertedID.(string); ok {
+			return strID, nil
+		}
+		// Для любых других типов
+		return fmt.Sprintf("%v", result.InsertedID), nil
+	}
 }
 
 func (fs *MongoStorage) UpdateById(ctx context.Context, collection string, id string, entity Entity) error {
@@ -215,7 +239,7 @@ func (fs *MongoStorage) UpdateById(ctx context.Context, collection string, id st
 
 	col := client.Database(fs.db).Collection(collection)
 
-	mId, err := primitive.ObjectIDFromHex(id)
+	mId, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		return err
 	}
@@ -288,7 +312,7 @@ func (fs *MongoStorage) DeleteById(ctx context.Context, collection string, id st
 
 	col := client.Database(fs.db).Collection(collection)
 
-	mId, err := primitive.ObjectIDFromHex(id)
+	mId, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		return err
 	}
@@ -351,7 +375,7 @@ func (fs *MongoStorage) Delete(ctx context.Context, collection string, query Que
 func ping(uri string) error {
 	client, _ := mongo.Connect(options.Client().ApplyURI(uri))
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	return client.Ping(ctx, readpref.Primary())

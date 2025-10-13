@@ -22,10 +22,10 @@ func NewRedisCache(addr, pwd string, db int) (*RedisCache, error) {
 		DB:       db,
 	})
 
-	_, err := c.client.Ping(context.Background()).Result()
+	/* _, err := c.client.Ping(context.Background()).Result()
 	if err != nil {
 		return nil, err
-	}
+	} */
 
 	return c, nil
 }

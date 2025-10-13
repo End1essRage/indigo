@@ -3,18 +3,18 @@ bot:
   debug: true
 
 cache:
-  type: "memory" #redis
+  type: "redis" #redis
   redis:
-    address: "localhost:6379"
+    address: "redis:6379"
     password: ""
     db: 0
 
 storage:
-  type: "file" #mongo
+  type: "mongo" #mongo
   file:
     path: "./e2e/storage"
   mongo:
-    address: "localhost:27017"
+    address: "mongo:27017"
     login: "admin"
     password: "password"
     db: "bot_db"

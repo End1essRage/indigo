@@ -7,6 +7,7 @@ import (
 
 	"github.com/end1essrage/indigo-core/storage"
 	lua "github.com/yuin/gopher-lua"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 // convertToLuaTable рекурсивно конвертирует Go-значения в Lua-структуры
@@ -48,6 +49,8 @@ func ConvertValue(L *lua.LState, value interface{}) lua.LValue {
 		return lua.LNumber(v)
 	case string:
 		return lua.LString(v)
+	case bson.ObjectID:
+		return lua.LString(v.Hex())
 	case []interface{}:
 		return ConvertToLuaTable(L, v)
 	case map[string]interface{}:
