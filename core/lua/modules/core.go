@@ -27,12 +27,27 @@ func (m *CoreModule) applyEncode(L *lua.LState, cmd string) {
 	L.SetGlobal(cmd, L.NewFunction(func(L *lua.LState) int {
 		dataTable := L.CheckTable(1)
 
-		data, err := h.LuaTableToJSON(L, dataTable)
+		data, err := h.LuaTableToJSON(dataTable)
 		if err != nil {
 			L.Push(lua.LString("{}"))
 			return 1
 		}
 		L.Push(lua.LString(string(data)))
+
+		return 1
+	}))
+}
+
+func (m *CoreModule) applyDecode(L *lua.LState, cmd string) {
+	L.SetGlobal(cmd, L.NewFunction(func(L *lua.LState) int {
+		dataTable := L.CheckString(1)
+
+		data, err := h.JsonToLuaTable(L, []byte(dataTable))
+		if err != nil {
+			L.Push(lua.LNil)
+			return 1
+		}
+		L.Push(data)
 
 		return 1
 	}))

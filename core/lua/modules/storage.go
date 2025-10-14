@@ -30,7 +30,7 @@ func (m *StorageModule) applyStorageCreate(L *lua.LState, cmd string) {
 		collection := L.CheckString(1)
 		dataTable := L.CheckTable(2)
 
-		data, err := h.LuaTableToJSON(L, dataTable)
+		data, err := h.LuaTableToJSON(dataTable)
 		if err != nil {
 			L.Push(lua.LFalse)
 			L.Push(lua.LString(err.Error()))
@@ -207,7 +207,7 @@ func (m *StorageModule) applyStorageUpdate(L *lua.LState, cmd string) {
 		query := checkQueryNode(L, 2)
 		dataTable := L.CheckTable(3)
 
-		data, err := h.LuaTableToJSON(L, dataTable)
+		data, err := h.LuaTableToJSON(dataTable)
 		if err != nil {
 			L.Push(lua.LNumber(0))
 			L.Push(lua.LString(err.Error()))
@@ -247,7 +247,7 @@ func (m *StorageModule) applyStorageUpdateById(L *lua.LState, cmd string) {
 		id := L.CheckString(2)
 		dataTable := L.CheckTable(3)
 
-		data, err := h.LuaTableToJSON(L, dataTable)
+		data, err := h.LuaTableToJSON(dataTable)
 		if err != nil {
 			L.Push(lua.LFalse)
 			L.Push(lua.LString(err.Error()))
@@ -288,7 +288,7 @@ func (m *StorageModule) applyStorageDelete(L *lua.LState, cmd string) {
 
 		count, err := m.storage.Delete(context.TODO(), collection, query)
 		if err != nil {
-			logrus.Debugf("ошибка удаления %w", err)
+			logrus.Debugf("ошибка удаления %s", err.Error())
 			//при notFound не прокидываем ошибку в луа а просто возвращаем пустоту
 			if _, ok := err.(*storage.NotFoundError); ok {
 				L.Push(lua.LNumber(0))

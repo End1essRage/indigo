@@ -6,6 +6,7 @@ import (
 	"reflect"
 
 	"github.com/end1essrage/indigo-core/storage"
+	"github.com/sirupsen/logrus"
 	lua "github.com/yuin/gopher-lua"
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
@@ -100,25 +101,39 @@ func ConvertReflectedValue(L *lua.LState, value interface{}) lua.LValue {
 	}
 }
 
-func LuaTableToJSON(L *lua.LState, tbl *lua.LTable) ([]byte, error) {
-	goValue := ConvertLuaValue(L, tbl)
+func LuaTableToJSON(tbl *lua.LTable) ([]byte, error) {
+	goValue := ConvertLuaValue(tbl)
 	return json.Marshal(goValue)
 }
 
-func ConvertLuaValue(L *lua.LState, value lua.LValue) interface{} {
+func JsonToLuaTable(L *lua.LState, jsonData []byte) (*lua.LTable, error) {
+	dataMap := make(map[string]any)
+	err := json.Unmarshal(jsonData, &dataMap)
+	if err != nil {
+		logrus.Errorf("ошибка конвертации %s", err.Error())
+		return nil, err
+	}
+
+	logrus.Debug(jsonData)
+	logrus.Debug(dataMap)
+
+	return ConvertToLuaTable(L, dataMap), nil
+}
+
+func ConvertLuaValue(value lua.LValue) interface{} {
 	switch v := value.(type) {
 	case *lua.LTable:
 		maxn := v.MaxN()
 		if maxn == 0 { // объект
 			result := make(map[string]interface{})
 			v.ForEach(func(k, val lua.LValue) {
-				result[k.String()] = ConvertLuaValue(L, val)
+				result[k.String()] = ConvertLuaValue(val)
 			})
 			return result
 		} else { // массив
 			result := make([]interface{}, maxn)
 			for i := 1; i <= maxn; i++ {
-				result[i-1] = ConvertLuaValue(L, v.RawGetInt(i))
+				result[i-1] = ConvertLuaValue(v.RawGetInt(i))
 			}
 			return result
 		}

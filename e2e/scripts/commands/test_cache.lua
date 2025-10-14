@@ -22,7 +22,17 @@ local complex_data = {
 }
 local json_data = json_encode(complex_data)
 cache_set("test:complex", json_data)
-results[3] = "✅ SET JSON: Сложные данные сохранены"
+local item = cache_get("test:complex")
+local itemTbl = json_decode(item)
+if itemTbl then 
+    if itemTbl.user == "test" then
+        results[3] = "✅ SET JSON: Сложные данные сохранены, получены и декодирвоаны"
+    else
+        results[3] = "❌ SET JSON: Сложные данные не получены или не декодированы"
+    end    
+else
+    results[3] = "❌ SET JSON: Сложные данные не получены или не декодированы"
+end
 
 -- Тест 4: Получение несуществующего ключа
 local missing = cache_get("test:missing")

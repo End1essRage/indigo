@@ -12,6 +12,9 @@ func (m *CoreModule) Apply(L *lua.LState) {
 	//(data: table) -> (json: string)
 	m.applyEncode(L, "json_encode")
 
+	//(json: string) -> (data: table)
+	m.applyDecode(L, "json_decode")
+
 	//(name: string) -> (secret: string)
 	m.applySecrets(L, "reveal")
 }
