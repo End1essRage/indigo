@@ -140,11 +140,11 @@ func main() {
 	//http клиент
 	client := client.NewHttpClient()
 
-	//луа движок
-	le := l.NewLuaEngine(bot, cache, client, storage, ScriptsPath, sec)
-
 	//сервисы
-	service := service.NewService(bot, storage)
+	service := service.NewService(bot, storage, cache)
+
+	//луа движок
+	le := l.NewLuaEngine(bot, cache, client, storage, ScriptsPath, sec, service)
 
 	//обрабатывающий сервер
 	server := s.NewServer(le, bot, config, buffer, service)

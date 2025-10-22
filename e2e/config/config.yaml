@@ -1,6 +1,7 @@
 bot:
   mode: "polling"
   debug: true
+  admin: 7337303205 # в виде числа
 
 cache:
   type: "redis" #redis

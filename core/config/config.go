@@ -99,8 +99,9 @@ type Secret struct {
 
 // BOT
 type BotConfig struct {
-	Mode  string `yaml:"mode"`
-	Debug bool   `yaml:"debug"`
+	Mode    string `yaml:"mode"`
+	Debug   bool   `yaml:"debug"`
+	AdminId int64  `yaml:"admin"`
 }
 
 type Command struct {
@@ -114,7 +115,8 @@ type Command struct {
 }
 
 type Button struct {
-	Text   string  `yaml:"text"`
+	Text string `yaml:"text"`
+	//Event  *string
 	Data   *string `yaml:"data,omitempty"`
 	Script *string `yaml:"script,omitempty"`
 }

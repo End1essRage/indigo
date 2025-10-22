@@ -90,12 +90,6 @@ func (s *Server) handleChatMember(upd *tgbotapi.ChatMemberUpdated) {
 	}
 
 	go s.service.HandleBotAdd(service.BotAdminRequest{FromId: upd.From.ID, ChannelId: upd.Chat.ID, Title: upd.Chat.Title})
-
-}
-
-// обработка запроса на авторизацию как админа
-func handleAdm() {
-
 }
 
 func (s *Server) handleCallbackQuery(query *tgbotapi.CallbackQuery) {
@@ -104,9 +98,15 @@ func (s *Server) handleCallbackQuery(query *tgbotapi.CallbackQuery) {
 
 	//удаляем сообщение с клавиатурой
 	s.bot.DeleteMsg(lCtx.ChatId, query.Message.MessageID)
-
+	switch lCtx.CbData.Script {
+	// 0 - особый знак что это внутренняя кнопка админская
+	case "0":
+		s.admHandleCallbackQuery(lCtx.ChatId, lCtx.CbData.Data)
 	//если есть скрипт запускаем
-	if lCtx.CbData.Script != "" {
+	case "":
+		//если скрипт вообще не передан ничего не делаем
+		return
+	default:
 		if err := s.le.ExecuteScript(lCtx.CbData.Script, lCtx); err != nil {
 			logrus.Errorf("Callback script error: %v", err)
 		}
@@ -116,7 +116,14 @@ func (s *Server) handleCallbackQuery(query *tgbotapi.CallbackQuery) {
 func (s *Server) handleCommand(upd *tgbotapi.Update) {
 	chatId := upd.Message.Chat.ID
 
+	// Добавить проверку на валидатере на занятые имена
+
 	// атвообработка команды хелп,мб стоит дать возможность оверрайдить
+	if upd.Message.Command() == "adm" {
+		s.handleAdm(upd)
+		return
+	}
+
 	if upd.Message.Command() == "help" {
 		s.bot.SendMessage(chatId, s.formatHelpMessage())
 		return

@@ -70,6 +70,7 @@ func (fw *FormWorker) StartForm(formName string, userID int64, upd *tgbotapi.Upd
 	return fw.sendFormStep(userID, 0, upd)
 }
 
+// вот тут надо захендлить остановку формы
 func (fw *FormWorker) HandleInput(upd *tgbotapi.Update) {
 	var userID int64
 	var input string

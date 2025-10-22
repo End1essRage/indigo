@@ -85,6 +85,7 @@ func FromLuaTableToMeshInlineKeyboard(lt *lua.LTable) MeshInlineKeyboard {
 	return mesh
 }
 
+// функция для конвертации конфига в MeshKeyboard
 func ParseInlineKeyboard(kb *c.Keyboard) MeshInlineKeyboard {
 	kbMesh := MeshInlineKeyboard{}
 

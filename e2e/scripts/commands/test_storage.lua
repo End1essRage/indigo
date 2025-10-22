@@ -276,4 +276,4 @@ test_get_ids()
 
 -- Отправляем результаты
 local message = "📊 *Результаты тестов Storage:*\n\n" .. table.concat(test_results, "\n")
-send_message(chat_id, message)
+send(chat_id, message, nil)

@@ -17,6 +17,7 @@ import (
 type LuaEngine struct {
 	bot      m.Bot
 	cache    m.Cache
+	service  m.Service
 	http     m.HttpClient
 	storage  m.Storage
 	BasePath string
@@ -24,8 +25,8 @@ type LuaEngine struct {
 	scripts  map[string][]byte
 }
 
-func NewLuaEngine(b m.Bot, c m.Cache, h m.HttpClient, s m.Storage, path string, sec *secret.SecretsOperator) *LuaEngine {
-	engine := &LuaEngine{bot: b, cache: c, http: h, storage: s, BasePath: path, Secret: sec}
+func NewLuaEngine(b m.Bot, c m.Cache, h m.HttpClient, s m.Storage, path string, sec *secret.SecretsOperator, svc m.Service) *LuaEngine {
+	engine := &LuaEngine{bot: b, cache: c, http: h, storage: s, BasePath: path, Secret: sec, service: svc}
 	spy, err := helpers.NewScripts(path)
 	if err != nil {
 		logrus.Fatalf("ошибка загрузки скриптов %v", err)
@@ -40,7 +41,7 @@ func (le *LuaEngine) ExecuteScript(scriptPath string, lContext LuaContext) error
 
 	L := NewStateBuilder(le).
 		WithModule(m.NewCache(le.cache)).
-		WithModule(m.NewBot(le.bot)).
+		WithModule(m.NewBot(le.bot, le.service)).
 		WithModule(m.NewHttp(le.http)).
 		WithModule(m.NewStorage(le.storage)).
 		Build()

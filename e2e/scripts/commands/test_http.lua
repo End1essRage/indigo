@@ -41,4 +41,4 @@ else
 end
 
 local message = "🌐 *Результаты тестов HTTP:*\n\n" .. table.concat(results, "\n")
-send_message(chat_id, message)
+send(chat_id, message, nil)

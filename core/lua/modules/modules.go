@@ -4,6 +4,10 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
+type Service interface {
+	GetChannelId(code string) (int64, error)
+}
+
 // Core
 func (m *CoreModule) Apply(L *lua.LState) {
 	//(msg: string)
@@ -22,10 +26,13 @@ func (m *CoreModule) Apply(L *lua.LState) {
 // Bot
 func (m *BotModule) Apply(L *lua.LState) {
 	//(chatId: int64, msg: string)
-	m.applySendMessage(L, "send_message")
+	//m.applySendMessage(L, "send_message")
 
 	//(chatId: int64, msg: string, keyboard: table) -> err?
-	m.applySendKeyboard(L, "send_keyboard")
+	m.applySend(L, "send")
+
+	//(chan_code: string, msg: string) -> err?
+	m.applySendChannel(L, "send_chan")
 }
 
 // Storage

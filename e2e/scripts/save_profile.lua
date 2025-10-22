@@ -16,20 +16,20 @@ local profile_data = {
 }
 
 if err then
-    send_message(chat_id, "❌ Ошибка при поиске прфоиля")
+    send(chat_id, "❌ Ошибка при поиске прфоиля")
 else
     if profile then
         -- Обновляем существующий
         storage_update_by_id("profiles", profile.id, profile_data)
-        send_message(chat_id, "✅ Профиль обновлен!")
+        send(chat_id, "✅ Профиль обновлен!")
     else
          -- Создаем новый
         profile_data.created_at = os.time()
         local ok, id = storage_create("profiles", profile_data)
         if ok then
-            send_message(chat_id, "✅ Профиль создан!")
+            send(chat_id, "✅ Профиль создан!")
         else
-            send_message(chat_id, "❌ Ошибка при сохранении профиля")
+            send(chat_id, "❌ Ошибка при сохранении профиля")
         end
     end
 end
